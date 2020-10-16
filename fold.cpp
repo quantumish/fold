@@ -1,15 +1,34 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <iostream>
+#include <string>
 #include <cstdlib>
 
-enum AminoAcid {A, R, N, D, C, E, Q, G, H, I, L, K, M, F, P, S, T, W, Y, V};
+std::string polar = "QNHSTYC";
+std::string nonpolar = "AILMFVPG";
 
 struct Residue
 {
-    AminoAcid id;
+    char id;
     bool polar;
     Eigen::Vector2i coords;
+};
+
+struct Protein
+{
+    std::vector<Residue> residues;
+    int energy;
+    Protein(std::string sequence);
+    void fold();
+};
+
+Protein::Protein(std::string sequence)
+{
+    for (char c : sequence) {
+        if (polar.find(c) > 0) residues.push_back({c, true, {0,residues.size()}});
+        else if (nonpolar.find(c) > 0) residues.push_back({c, false, {0,residues.size()}});
+    }
+    energy = 0;
 };
 
 int energy(std::vector<Residue> protein)
@@ -30,10 +49,6 @@ int energy(std::vector<Residue> protein)
 
 int main()
 {
-    std::vector<Residue> protein;
-    protein.push_back({A, false, {0,0}});
-    protein.push_back({N, true, {1,0}});
-    protein.push_back({N, true, {1,1}});
-    protein.push_back({A, false, {0,1}});
-    std::cout << energy(protein) << "\n";
+    Protein protein ("ANNA");
+    std::cout << energy(protein.residues) << "\n";
 }
