@@ -57,7 +57,7 @@ void Protein::update()
     auto now = std::chrono::high_resolution_clock::now();
     srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     attempt_move(rand() % residues.size());
-    if (energy(residues) >= energy(old)) residues = old;
+    if (energy(residues) > energy(old)) residues = old;
 };
 
 // Takes residue chain and a coordinate, checks if there is a residue there. O(n).
@@ -76,7 +76,6 @@ void Protein::attempt_move(int i)
 {
     std::vector<Move> valid;
     std::vector<Eigen::Vector2i> open_offsets;
-    std::cout << "i = " << i << "\n";
     if (i == 0 || i == residues.size()-1) {
         int prev;
         if (i == 0) prev = 1;
@@ -95,17 +94,33 @@ void Protein::attempt_move(int i)
             open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] - 1});
         }
     }
-    bool top_corner = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
+    bool top_left = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
                        abs(i - check_residue(residues, residues[i].coords, 0, -1)) == 1);
-    bool bottom_corner = (abs(i - check_residue(residues, residues[i].coords, -1, 0)) == 1 &&
+    bool top_right = (abs(i - check_residue(residues, residues[i].coords, -1, 0)) == 1 &&
+                       abs(i - check_residue(residues, residues[i].coords, 0, -1)) == 1);
+    bool bottom_right = (abs(i - check_residue(residues, residues[i].coords, -1, 0)) == 1 &&
                           abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
+    bool bottom_left = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
+                          abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
+    //if (i == 1) std::cout << bottom_left << "\n";
     Eigen::Vector2i jump;
-    if (bottom_corner) {
+    if (bottom_right) {
         jump = {-1, 1};
-        if (!check_residue(residues, residues[i].coords, -1, 1)) valid.push_back(Corner);
-    } else if (top_corner) {
+        if (check_residue(residues, residues[i].coords, -1, 1) < 0) valid.push_back(Corner);
+    } else if (top_left) {
         jump = {1, -1};
-        if (!check_residue(residues, residues[i].coords, 1, -1)) valid.push_back(Corner);
+        if (check_residue(residues, residues[i].coords, 1, -1) < 0) valid.push_back(Corner);
+    } else if (top_right) {
+        jump = {-1, -1};
+        if (check_residue(residues, residues[i].coords, -1, -1) < 0) valid.push_back(Corner);
+    } else if (bottom_left) {
+        jump = {1, 1};
+        //        std::cout << "hi" << "\n";
+        //        std::cout << check_residue(residues, residues[i].coords, 1, 1) << "\n";
+        if (check_residue(residues, residues[i].coords, 1, 1) < 0) {
+            //  std::cout << "yay" << "\n";
+            valid.push_back(Corner);
+        }
     }
     if (valid.size() == 0) return;
     auto now = std::chrono::high_resolution_clock::now();
@@ -113,7 +128,9 @@ void Protein::attempt_move(int i)
     Move action = valid[rand() % valid.size()];
     switch (action) {
     case Corner:
+        //        std::cout << residues[i].coords.transpose() << " " << jump.transpose() << "\n";
         residues[i].coords += jump;
+        //        std::cout << residues[i].coords.transpose() << "\n";
         break;
     case End:
         auto now = std::chrono::high_resolution_clock::now();
@@ -125,13 +142,21 @@ void Protein::attempt_move(int i)
 
 int main()
 {
-    Protein protein ("HPPH");
-    for (int i = 0; i < 5; i++) {
+    Protein protein ("HPPHPH");
+    for (int i = 0; i < 300; i++) {
         protein.update();
         float cost = energy(protein.residues);
-        std::cout << "Energy: " << cost << "\n";
-        for (int j = 0; j < protein.residues.size(); j++) {
-            std::cout << protein.residues[j].coords << "\n\n";
+        std::cout << cost << "\n";
+        if (cost <= -2) {
+            for (int j = 0; j < protein.residues.size(); j++) {
+                if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
+                std::cout << protein.residues[j].coords << "\n\n";
+            }
+            return 0;
         }
+    }
+    for (int j = 0; j < protein.residues.size(); j++) {
+        if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
+        std::cout << protein.residues[j].coords << "\n\n";
     }
 }
