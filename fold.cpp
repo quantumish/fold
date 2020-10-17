@@ -7,6 +7,13 @@
 #include <ctime>
 #include <chrono>
 
+#ifdef PYTHON
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/eigen.h>
+namespace py = pybind11;
+#endif
+
 std::string polar = "QNHSTYC";
 std::string nonpolar = "AILMFVPG";
 enum Move {End, Corner, Crankshaft};
@@ -37,6 +44,7 @@ struct Protein
 {
     std::chrono::high_resolution_clock::time_point born = std::chrono::high_resolution_clock::now();
     std::vector<Residue> residues;
+    float score;
     Protein(std::string sequence);
     void update();
     void attempt_move(int i);
@@ -58,7 +66,9 @@ void Protein::update()
     auto now = std::chrono::high_resolution_clock::now();
     srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     attempt_move(rand() % residues.size());
-    if (energy(residues) > energy(old)) residues = old;
+    float updated = energy(residues);
+    if (updated > energy(old)) residues = old;
+    else score = updated;
 };
 
 // Takes residue chain and a coordinate, checks if there is a residue there. O(n).
@@ -161,3 +171,18 @@ int main()
         std::cout << protein.residues[j].coords << "\n\n";
     }
 }
+
+#ifdef PYTHON
+PYBIND11_MODULE(fold, m) {
+    m.doc() = "Protein folding.";
+    py::class_<Residue>(m, "Residue")
+        .def_readonly("id", &Residue::id)
+        .def_readonly("coords", &Residue::coords)
+        .def_readonly("polar", &Residue::polar);
+    py::class_<Protein>(m, "Protein")
+        .def(py::init<std::string>())
+        .def("update", &Protein::update)
+        .def_readonly("residues", &Protein::residues)
+        .def_readonly("score", &Protein::score);
+}
+#endif
