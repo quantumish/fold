@@ -33,7 +33,7 @@ float energy(std::vector<Residue> residues)
         if (residues[i].polar == true) continue;
         for (int j = 0; j < residues.size(); j++) {
             if (residues[j].polar == true || abs(i-j) == 1 || i==j) continue;
-            //std::cout << i << "(" << residues[i].coords.transpose() << ") vs " << j << "(" << residues[j].coords.transpose() << ") is " << abs((residues[i].coords - residues[j].coords).norm()) << "\n";
+            //std::cout << i << "(" << residues[i].coords.transpose() << ") vs " << j << "(" << residues[j].coords.transpose() << ") is " << abs((residues[i].coords - residues[j].coords).norm()) << "            
             energy -= 1.0/abs((residues[i].coords - residues[j].coords).norm());
         }
     }
@@ -46,12 +46,13 @@ struct Protein
     std::vector<Residue> residues;
     float score;
     float temperature;
-    Protein(std::string sequence);
+    Protein(std::string sequence, float temp);
     void update();
-    void attempt_move(int i);
+    int attempt_move(int i);
+    int exposure(int i);
 };
 
-Protein::Protein(std::string sequence)
+Protein::Protein(std::string sequence, float temp)
     :temperature(temp)
 {
     for (char c : sequence) {
@@ -67,13 +68,14 @@ void Protein::update()
     std::vector<Residue> old = residues;   
     auto now = std::chrono::high_resolution_clock::now();
     srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
-    attempt_move(rand() % residues.size());
+    int code = attempt_move(rand() % residues.size());
+    if (code == -1) return;
     float updated = energy(residues);
     float delta = updated - energy(old);
     // now = std::chrono::high_resolution_clock::now();
     // srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     // float rndm = (float)rand()/RAND_MAX;
-    // std::cout << rndm << " vs " << exp(-delta/temperature) << "\n";
+    //std::cout << rndm << " vs exp((" << -delta << " + 0.1) /" << temperature << ") so " << exp((-delta + 0.1)/temperature) << "\n";
     if (delta > 0) residues = old;
     else score = updated;
 };
@@ -85,12 +87,12 @@ int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, int x_o
     target[1] += y_offset;
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].coords == target) return i;
-    }
+    }   
     return -1;
 }
 
 // Takes a index in a residue chain, tries a random move that is valid for it
-void Protein::attempt_move(int i)
+int Protein::attempt_move(int i)
 {
     std::vector<Move> valid;
     std::vector<Eigen::Vector2i> open_offsets;
@@ -140,7 +142,7 @@ void Protein::attempt_move(int i)
             valid.push_back(Corner);
         }
     }
-    if (valid.size() == 0) return;
+    if (valid.size() == 0) return -1;
     auto now = std::chrono::high_resolution_clock::now();
     srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     Move action = valid[rand() % valid.size()];
@@ -151,11 +153,22 @@ void Protein::attempt_move(int i)
         //        std::cout << residues[i].coords.transpose() << "\n";
         break;
     case End:
-        auto now = std::chrono::high_resolution_clock::now();
+        now = std::chrono::high_resolution_clock::now();
         srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
         residues[i].coords += open_offsets[rand() % open_offsets.size()];
         break;
     }
+    return 0;
+}
+
+int Protein::exposure(int i)
+{
+    int n = 0;
+    if (check_residue(residues, residues[i].coords, -1, 0) < 0) n++;
+    if (check_residue(residues, residues[i].coords, 1, 0) < 0) n++;
+    if (check_residue(residues, residues[i].coords, 0, -1) < 0) n++;
+    if (check_residue(residues, residues[i].coords, 0, 1) < 0) n++;
+    return n;
 }
 
 int main()
@@ -187,8 +200,9 @@ PYBIND11_MODULE(fold, m) {
         .def_readonly("coords", &Residue::coords)
         .def_readonly("polar", &Residue::polar);
     py::class_<Protein>(m, "Protein")
-        .def(py::init<std::string>())
+        .def(py::init<std::string, float>())
         .def("update", &Protein::update)
+        .def("exposure", &Protein::exposure, py::arg("i"))
         .def_readonly("residues", &Protein::residues)
         .def_readonly("score", &Protein::score);
 }

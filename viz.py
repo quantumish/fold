@@ -3,16 +3,20 @@ import matplotlib.animation as animation
 from matplotlib import collections as mc
 import fold
 
-fig, axs = plt.subplots(1, 2)
+fig, axs = plt.subplots(2, 2)
 sequence = "HPPHPH"
-protein = fold.Protein(sequence, 1)
+protein = fold.Protein(sequence, 2)
 energies = []
+densities = []
+exposures = []
 
 def animate(i):
-    axs[0].clear()
-    axs[1].clear()
-    axs[0].set_ylim([-len(sequence)/3, len(sequence)+len(sequence)/3])
-    axs[0].set_xlim([-5, 10])
+    axs[0,0].clear()
+    axs[0,1].clear()
+    axs[1,0].clear()
+    axs[1,1].clear()
+    axs[0,0].set_ylim([-len(sequence)/3, len(sequence)+len(sequence)/3])
+    axs[0,0].set_xlim([-5, 10])
     protein.update()
     energies.append(protein.score)
     h_x = []
@@ -35,18 +39,34 @@ def animate(i):
             chain.append([i.coords, protein.residues[x+1].coords])
     cc = mc.LineCollection(chain, color='black', linewidths=2, label="Chain connection")
     bc = mc.LineCollection(bonds, color='red', linewidths=2, label="Bond")
-    axs[0].add_collection(cc)
-    axs[0].add_collection(bc)
-    axs[0].scatter(h_x, h_y, zorder=2, label='Hydrophobic')
-    axs[0].scatter(p_x, p_y, zorder=2, label='Polar')
-    axs[0].legend()
-    axs[1].plot(energies)
-    axs[0].set_title("Lattice protein")
-    axs[1].set_title("Energy score over iterations")
-    axs[1].set_xlabel("Energy score")
-    axs[1].set_ylabel("Iterations")
+    density = 1/((max(h_x) - min(h_x))*(max(h_y) - min(h_y))) * len(protein.residues)
+    densities.append(density)
+    exposure = 0
+    for x, i in enumerate(protein.residues):
+        if i.polar == False:
+            exposure += protein.exposure(x)
+    exposure /= len(h_x)
+    exposures.append(exposure)
+    axs[0,0].add_collection(cc)
+    axs[0,0].add_collection(bc)
+    axs[0,0].scatter(h_x, h_y, zorder=2, label='Hydrophobic')
+    axs[0,0].scatter(p_x, p_y, zorder=2, label='Polar')
+    axs[0,0].legend()
+    axs[1,0].plot(energies)
+    axs[1,1].plot(densities, color="#6cad50")
+    axs[0,1].plot(exposures, color="#f2444f")
+    axs[0,0].set_title("Lattice protein")
+    axs[1,0].set_title("Energy score of protein")
+    axs[1,0].set_xlabel("Iterations")
+    axs[1,0].set_ylabel("Energy score")
+    axs[1,1].set_title("Density of hydrophobic residues")
+    axs[1,1].set_xlabel("Iterations")
+    axs[1,1].set_ylabel("Density")
+    axs[0,1].set_title("Average exposure of hydrophobic residues")
+    axs[0,1].set_xlabel("Iterations")
+    axs[0,1].set_ylabel("Avg # of exposed sides")
 
 
-ani = animation.FuncAnimation(fig, animate, interval=1, frames=300) 
+ani = animation.FuncAnimation(fig, animate, interval=1) 
 plt.show()
 
