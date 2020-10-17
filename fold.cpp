@@ -45,16 +45,18 @@ struct Protein
     std::chrono::high_resolution_clock::time_point born = std::chrono::high_resolution_clock::now();
     std::vector<Residue> residues;
     float score;
+    float temperature;
     Protein(std::string sequence);
     void update();
     void attempt_move(int i);
 };
 
 Protein::Protein(std::string sequence)
+    :temperature(temp)
 {
     for (char c : sequence) {
         //if (polar.find(c) > 0) residues.push_back({c, true, {0,residues.size()}});
-        //else if (nonpolar.find(c) > 0) residues.push_back({c, false, {0,residues.size()}});
+        //if ((int)nonpolar.find(c) > 0) residues.push_back({c, false, {0,residues.size()}});
         if (c == 'P') residues.push_back({c, true, {0,residues.size()}});
         else residues.push_back({c, false, {0,residues.size()}});
     }
@@ -67,7 +69,12 @@ void Protein::update()
     srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     attempt_move(rand() % residues.size());
     float updated = energy(residues);
-    if (updated > energy(old)) residues = old;
+    float delta = updated - energy(old);
+    // now = std::chrono::high_resolution_clock::now();
+    // srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
+    // float rndm = (float)rand()/RAND_MAX;
+    // std::cout << rndm << " vs " << exp(-delta/temperature) << "\n";
+    if (delta > 0) residues = old;
     else score = updated;
 };
 
@@ -153,7 +160,7 @@ void Protein::attempt_move(int i)
 
 int main()
 {
-    Protein protein ("HPPHPH");
+    Protein protein ("HPPHPH", 2);
     for (int i = 0; i < 300; i++) {
         protein.update();
         float cost = energy(protein.residues);

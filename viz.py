@@ -4,15 +4,14 @@ from matplotlib import collections as mc
 import fold
 
 fig, axs = plt.subplots(1, 2)
-
-
-protein = fold.Protein("HPPHPH")
+sequence = "HPPHPH"
+protein = fold.Protein(sequence, 1)
 energies = []
 
 def animate(i):
     axs[0].clear()
     axs[1].clear()
-    axs[0].set_ylim([-5, 10])
+    axs[0].set_ylim([-len(sequence)/3, len(sequence)+len(sequence)/3])
     axs[0].set_xlim([-5, 10])
     protein.update()
     energies.append(protein.score)
@@ -30,7 +29,7 @@ def animate(i):
             h_x.append(i.coords[0])
             h_y.append(i.coords[1])
             for y,j in enumerate(protein.residues):
-                if (abs(y-x) > 1 and ((abs(i.coords[0]-j.coords[0]) == 1 and abs(i.coords[1]-j.coords[1]) == 0) or (abs(i.coords[0]-j.coords[0]) == 0 and abs(i.coords[1]-j.coords[1]) == 1))):
+                if (abs(y-x) > 1 and ((abs(i.coords[0]-j.coords[0]) == 1 and abs(i.coords[1]-j.coords[1]) == 0) or (abs(i.coords[0]-j.coords[0]) == 0 and abs(i.coords[1]-j.coords[1]) == 1)) and j.polar == False):
                     bonds.append([i.coords, j.coords])
         if (x != len(protein.residues)-1):
             chain.append([i.coords, protein.residues[x+1].coords])
@@ -42,7 +41,12 @@ def animate(i):
     axs[0].scatter(p_x, p_y, zorder=2, label='Polar')
     axs[0].legend()
     axs[1].plot(energies)
+    axs[0].set_title("Lattice protein")
+    axs[1].set_title("Energy score over iterations")
+    axs[1].set_xlabel("Energy score")
+    axs[1].set_ylabel("Iterations")
 
-ani = animation.FuncAnimation(fig, animate, interval=1000, frames=300) 
+
+ani = animation.FuncAnimation(fig, animate, interval=1, frames=300) 
 plt.show()
 
