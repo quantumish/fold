@@ -19,17 +19,14 @@ struct Residue
 };
 
 // Takes residue chain and calculates energy score. O(n^2).
-int energy(std::vector<Residue> residues)
+float energy(std::vector<Residue> residues)
 {
-    int energy = 0;
+    float energy = 0;
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].polar == true) continue;
         for (int j = 0; j < residues.size(); j++) {
-            if (residues[j].polar == true || abs(i-j) == 1) continue;
-            if (abs(residues[i].coords[0]-residues[j].coords[0]) == 1 ||
-                abs(residues[i].coords[1]-residues[j].coords[1]) == 1) {
-                energy-=1;
-            }
+            if (residues[j].polar == true || abs(i-j) == 1 || i==j) continue;
+            energy -= 1.0/abs((residues[i].coords - residues[j].coords).norm());
         }
     }
     return energy/2;
@@ -80,10 +77,10 @@ void Protein::attempt_move(int i)
     std::vector<Move> valid;
     std::vector<Eigen::Vector2i> open_offsets;
     std::cout << "i = " << i << "\n";
-    if (i == 0 || i == residues.size()) {
+    if (i == 0 || i == residues.size()-1) {
         int prev;
         if (i == 0) prev = 1;
-        if (i == residues.size()) prev = -1;
+        if (i == residues.size()-1) prev = -1;
         if (check_residue(residues, residues[i+prev].coords, 1, 0) < 0) {
             valid.push_back(End);
             open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
@@ -131,7 +128,7 @@ int main()
     Protein protein ("HPPH");
     for (int i = 0; i < 5; i++) {
         protein.update();
-        int cost = energy(protein.residues);
+        float cost = energy(protein.residues);
         std::cout << "Energy: " << cost << "\n";
         for (int j = 0; j < protein.residues.size(); j++) {
             std::cout << protein.residues[j].coords << "\n\n";
