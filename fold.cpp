@@ -26,6 +26,7 @@ float energy(std::vector<Residue> residues)
         if (residues[i].polar == true) continue;
         for (int j = 0; j < residues.size(); j++) {
             if (residues[j].polar == true || abs(i-j) == 1 || i==j) continue;
+            //std::cout << i << "(" << residues[i].coords.transpose() << ") vs " << j << "(" << residues[j].coords.transpose() << ") is " << abs((residues[i].coords - residues[j].coords).norm()) << "\n";
             energy -= 1.0/abs((residues[i].coords - residues[j].coords).norm());
         }
     }
@@ -147,13 +148,13 @@ int main()
         protein.update();
         float cost = energy(protein.residues);
         std::cout << cost << "\n";
-        if (cost <= -2) {
-            for (int j = 0; j < protein.residues.size(); j++) {
-                if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
-                std::cout << protein.residues[j].coords << "\n\n";
-            }
-            return 0;
-        }
+        // if (cost <= -2) {
+        //     for (int j = 0; j < protein.residues.size(); j++) {
+        //         if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
+        //         std::cout << protein.residues[j].coords << "\n\n";
+        //     }
+        //     return 0;
+        // }
     }
     for (int j = 0; j < protein.residues.size(); j++) {
         if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
