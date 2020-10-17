@@ -3,9 +3,12 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <random>
+#include <ctime>
 
 std::string polar = "QNHSTYC";
 std::string nonpolar = "AILMFVPG";
+enum Move {End, Corner, Crankshaft};
 
 struct Residue
 {
@@ -27,42 +30,51 @@ Protein::Protein(std::string sequence)
     for (char c : sequence) {
         //if (polar.find(c) > 0) residues.push_back({c, true, {0,residues.size()}});
         //else if (nonpolar.find(c) > 0) residues.push_back({c, false, {0,residues.size()}});
-        if (c = 'P') residues.push_back({c, true, {0,residues.size()}});
+        if (c == 'P') residues.push_back({c, true, {0,residues.size()}});
         else residues.push_back({c, false, {0,residues.size()}});
     }
     energy = 0;
 };
 
-Protein::update()
+void Protein::update()
 {
     
 };
 
-// Takes a index in a residue chain, determines what moves are valid for it
-// Returns vector of bool where index 0 represents if end move is valid.
-// index 1 represents corner flip, and index 2 represents crankshaft
-std::vector<bool> check_moves(std::vector<Residue> residues, int index)
+// Takes residue chain and a coordinate, checks if there is a residue there. O(n).
+int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, int x_offset = 0, int y_offset = 0)
 {
-    std::vector<bool> valid;
-    if (i == 0 || i == residues.size()) {
-        if (check_residue({residue[i].coords[0]+1, residue[i].coords[1]}) &&
-            check_residue({residue[i].coords[0]-1, residue[i].coords[1]}) &&
-            check_residue({residue[i].coords[0], residue[i].coords[1]+1}) &&
-            check_residue({residue[i].coords[0], residue[i].coords[1]-1})) {
-            valid.push_back(false);
-        }
-        else valid.push_back(true)
+    target[0] += x_offset;
+    target[1] += y_offset;
+    for (int i = 0; i < residues.size(); i++) {
+        if (residues[i].coords == target) return i;
     }
-    
+    return -1;
 }
 
-// Takes residue chain and a coordinate, checks if there is a residue there. O(n).
-bool check_residue(std::vector<Residue> residues, Eigen::Vector2i target)
+// Takes a index in a residue chain, tries a random move that is valid for it
+std::vector<bool> attempt_move(std::vector<Residue> residues, int i)
 {
-    for (int i = 0; i < residues.size(); i++) {
-        if (residues[i].coords == target) return true;
+    std::vector<Move> valid;
+    if (i == 0 || i == residues.size()) {
+        if (!check_residue(residues, residues[i].coords, 1, 0) ||
+            !check_residue(residues, residues[i].coords, -1, 0) ||
+            !check_residue(residues, residues[i].coords, 0, 1) ||
+            !check_residue(residues, residues[i].coords, 0, -1)) {
+            valid.push_back(End);
+        }
     }
-    return false;
+    bool top_corner = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
+                       abs(i - check_residue(residues, residues[i].coords, 0, -1)) == 1);
+    bool bottom_corner = (abs(i - check_residue(residues, residues[i].coords, -1, 0)) == 1 &&
+                          abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
+    if (bottom_corner) {
+        if (!check_residue(residues, residues[i].coords, -1, 1)) valid.push_back(Corner);
+    } else if (top_corner) {
+        if (!check_residue(residues, residues[i].coords, 1, -1)) valid.push_back(Corner);
+    }
+
+    srand(std::time(nullptr));
 }
 
 // Takes residue chain and calculates energy score. O(n^2).
