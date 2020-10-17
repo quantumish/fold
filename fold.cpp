@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <random>
 #include <ctime>
+#include <chrono>
 
 std::string polar = "QNHSTYC";
 std::string nonpolar = "AILMFVPG";
@@ -36,6 +37,7 @@ int energy(std::vector<Residue> residues)
 
 struct Protein
 {
+    std::chrono::high_resolution_clock::time_point born = std::chrono::high_resolution_clock::now();
     std::vector<Residue> residues;
     Protein(std::string sequence);
     void update();
@@ -54,10 +56,11 @@ Protein::Protein(std::string sequence)
 
 void Protein::update()
 {
-    std::vector<Residue> old = residues;
-    srand(std::time(nullptr));
+    std::vector<Residue> old = residues;   
+    auto now = std::chrono::high_resolution_clock::now();
+    srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     attempt_move(rand() % residues.size());
-    if (energy(residues) > energy(old)) residues = old;
+    if (energy(residues) >= energy(old)) residues = old;
 };
 
 // Takes residue chain and a coordinate, checks if there is a residue there. O(n).
@@ -76,19 +79,23 @@ void Protein::attempt_move(int i)
 {
     std::vector<Move> valid;
     std::vector<Eigen::Vector2i> open_offsets;
+    std::cout << "i = " << i << "\n";
     if (i == 0 || i == residues.size()) {
-        if (!check_residue(residues, residues[i].coords, 1, 0)) {
+        int prev;
+        if (i == 0) prev = 1;
+        if (i == residues.size()) prev = -1;
+        if (check_residue(residues, residues[i+prev].coords, 1, 0) < 0) {
             valid.push_back(End);
-            open_offsets.push_back({1,0});
-        } else if (!check_residue(residues, residues[i].coords, -1, 0)) {
+            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
+        } else if (check_residue(residues, residues[i+prev].coords, -1, 0) < 0) {
             valid.push_back(End);
-            open_offsets.push_back({-1,0});
-        } else if (!check_residue(residues, residues[i].coords, 0, 1)) {
+            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] - 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
+        } else if (check_residue(residues, residues[i+prev].coords, 0, 1) < 0) {
             valid.push_back(End);
-            open_offsets.push_back({0,1});
-        } else if (!check_residue(residues, residues[i].coords, 0, -1)) {            
+            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] + 1});
+        } else if (check_residue(residues, residues[i+prev].coords, 0, -1) < 0) {
             valid.push_back(End);
-            open_offsets.push_back({0,-1});
+            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] - 1});
         }
     }
     bool top_corner = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
@@ -103,14 +110,17 @@ void Protein::attempt_move(int i)
         jump = {1, -1};
         if (!check_residue(residues, residues[i].coords, 1, -1)) valid.push_back(Corner);
     }
-    srand(std::time(nullptr));
+    if (valid.size() == 0) return;
+    auto now = std::chrono::high_resolution_clock::now();
+    srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     Move action = valid[rand() % valid.size()];
     switch (action) {
     case Corner:
         residues[i].coords += jump;
         break;
     case End:
-        srand(std::time(nullptr));
+        auto now = std::chrono::high_resolution_clock::now();
+        srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
         residues[i].coords += open_offsets[rand() % open_offsets.size()];
         break;
     }
@@ -121,6 +131,10 @@ int main()
     Protein protein ("HPPH");
     for (int i = 0; i < 5; i++) {
         protein.update();
-        std::cout << energy(protein.residues) << "\n";
+        int cost = energy(protein.residues);
+        std::cout << "Energy: " << cost << "\n";
+        for (int j = 0; j < protein.residues.size(); j++) {
+            std::cout << protein.residues[j].coords << "\n\n";
+        }
     }
 }
