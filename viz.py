@@ -6,7 +6,7 @@ import fold
 def draw_protein(protein, ax):
     ax.clear()
     ax.set_ylim([-len(protein.residues)/3, len(protein.residues)+len(protein.residues)/3])
-    ax.set_xlim([-len(protein.residues)/3, len(protein.residues)+len(protein.residues)/3])
+    ax.set_xlim([-len(protein.residues)/3, (len(protein.residues)+len(protein.residues)/3)/2])
     h_x, h_y, p_x, p_y = [], [], [], []
     chain, bonds = [], []
     for x,i in enumerate(protein.residues):
@@ -17,7 +17,7 @@ def draw_protein(protein, ax):
                 h_x.append(i.coords[0])
                 h_y.append(i.coords[1])
             for y,j in enumerate(protein.residues):
-                if (abs(y-x) > 1 and ((abs(i.coords[0]-j.coords[0]) == 1 and abs(i.coords[1]-j.coords[1]) == 0) or (abs(i.coords[0]-j.coords[0]) == 0 and abs(i.coords[1]-j.coords[1]) == 1)) and j.polar == False):
+                if (abs(y-x) > 1 and ((abs(i.coords[0]-j.coords[0]) == 1 and abs(i.coords[1]-j.coords[1]) == 0) or (abs(i.coords[0]-j.coords[0]) == 0 and abs(i.coords[1]-j.coords[1]) == 1)) and j.polar == False and i.polar == False):
                     bonds.append([i.coords, j.coords])
             if (x != len(protein.residues)-1):
                 chain.append([i.coords, protein.residues[x+1].coords])
@@ -82,5 +82,5 @@ def landscape_view():
     plt.plot(energies_a + list(reversed(energies_b)))
     plt.show()
 
-#standard_view(1)
+standard_view(1000)
 #landscape_view()

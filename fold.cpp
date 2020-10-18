@@ -53,14 +53,15 @@ float energy(std::vector<Residue> residues)
 {
     float energy = 0;
     for (int i = 0; i < residues.size(); i++) {
-        if (residues[i].polar == true) continue;
         for ( int j = 0; j < residues.size(); j++) {
-            if (residues[j].polar == true || abs(i-j) == 1 || i==j) continue;
+            if ((residues[j].polar && residues[i].polar) || abs(i-j) == 1 || i==j) continue;
             if ((abs(residues[i].coords[0]-residues[j].coords[0]) == 1 &&
                 abs(residues[i].coords[1]-residues[j].coords[1]) == 0) ||
                 (abs(residues[i].coords[0]-residues[j].coords[0]) == 0 &&
                 abs(residues[i].coords[1]-residues[j].coords[1]) == 1)) {
-                energy-=1;
+                if (residues[i].polar && !residues[j].polar) energy-=1.2;
+                else if (!residues[i].polar && residues[j].polar) energy-=1.2;
+                else energy-=3;
             }
         }
     }
