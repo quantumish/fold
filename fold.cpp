@@ -1,5 +1,6 @@
 #include <Eigen/Dense>
 #include <vector>
+#include <array>
 #include <iostream>
 #include <string>
 #include <cstdlib>
@@ -26,10 +27,9 @@ struct Residue
 };
 
 // Takes residue chain and a coordinate, checks if there is a residue there. O(n).
-int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, int x_offset = 0, int y_offset = 0)
+int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, Eigen::Vector2i offset)
 {
-    target[0] += x_offset;
-    target[1] += y_offset;
+    target += offset;
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].coords == target) return i;
     }   
@@ -39,10 +39,10 @@ int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, int x_o
 int exposure(std::vector<Residue> residues, int i)
 {
     int n = 0;
-    if (check_residue(residues, residues[i].coords, -1, 0) < 0) n++;
-    if (check_residue(residues, residues[i].coords, 1, 0) < 0) n++;
-    if (check_residue(residues, residues[i].coords, 0, -1) < 0) n++;
-    if (check_residue(residues, residues[i].coords, 0, 1) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {-1, 0}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {1, 0}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {0, -1}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {0, 1}) < 0) n++;
     return n;
 }
 
@@ -87,10 +87,8 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
         else if (i==0) loc = {0,0};
         else {
             std::vector<Eigen::Vector2i> open_offsets;
-            if (check_residue(residues, residues[i-1].coords, 1, 0) < 0) open_offsets.push_back({residues[i-1].coords[0] + 1, residues[i-1].coords[1] - 0});
-            if (check_residue(residues, residues[i-1].coords, -1, 0) < 0) open_offsets.push_back({residues[i-1].coords[0] - 1, residues[i-1].coords[1] - 0});
-            if (check_residue(residues, residues[i-1].coords, 0, 1) < 0) open_offsets.push_back({residues[i-1].coords[0] + 0, residues[i-1].coords[1] + 1});
-            if (check_residue(residues, residues[i-1].coords, 0, -1) < 0) open_offsets.push_back({residues[i-1].coords[0] + 0, residues[i-1].coords[1] - 1});
+            std::array<Eigen::Vector2i, 4> offsets = {{{1,0},{-1,0},{0,1},{0,-1}}};
+            for (Eigen::Vector2i offset : offsets) if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
             auto now = std::chrono::high_resolution_clock::now();
             srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
             if (open_offsets.size() == 0) {
@@ -116,59 +114,37 @@ void Protein::update()
     // now = std::chrono::high_resolution_clock::now();
     // srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     // float rndm = (float)rand()/RAND_MAX;
-    //std::cout << rndm << " vs exp((" << -delta << " + 0.1) /" << temperature << ") so " << exp((-delta + 0.1)/temperature) << "\n";
+    // std::cout << rndm << " vs exp((" << -delta << " + 0.1) /" << temperature << ") so " << exp((-delta + 0.1)/temperature) << "\n";
     if (delta > 0) residues = old;
     else score = updated;
 };
 
-// Takes a index in a residue chain, tries a random move that is valid for it
+// Takes a index in the residue chain, tries a random move that is valid for it
 int Protein::attempt_move(int i)
 {
     std::vector<Move> valid;
     std::vector<Eigen::Vector2i> open_offsets;
     if (i == 0 || i == residues.size()-1) {
+        std::array<Eigen::Vector2i, 4> offsets = {{{1,0},{-1,0},{0,1},{0,-1}}};
         int prev;
         if (i == 0) prev = 1;
         if (i == residues.size()-1) prev = -1;
-        if (check_residue(residues, residues[i+prev].coords, 1, 0) < 0) {
-            valid.push_back(End);
-            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
-        }
-        if (check_residue(residues, residues[i+prev].coords, -1, 0) < 0) {
-            valid.push_back(End);
-            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] - 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
-        }
-        if (check_residue(residues, residues[i+prev].coords, 0, 1) < 0) {
-            valid.push_back(End);
-            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] + 1});
-        }
-        if (check_residue(residues, residues[i+prev].coords, 0, -1) < 0) {
-            valid.push_back(End);
-            open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] - 1});
+        for (Eigen::Vector2i offset : offsets) {
+            if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
+                valid.push_back(End);
+                open_offsets.push_back(residues[i+prev].coords - residues[i].coords + offset);
+            }
         }
     }
-    bool top_left = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
-                       abs(i - check_residue(residues, residues[i].coords, 0, -1)) == 1);
-    bool top_right = (abs(i - check_residue(residues, residues[i].coords, -1, 0)) == 1 &&
-                       abs(i - check_residue(residues, residues[i].coords, 0, -1)) == 1);
-    bool bottom_right = (abs(i - check_residue(residues, residues[i].coords, -1, 0)) == 1 &&
-                          abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
-    bool bottom_left = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
-                          abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
     Eigen::Vector2i jump;
-    if (bottom_right) {
-        jump = {-1, 1};
-        if (check_residue(residues, residues[i].coords, -1, 1) < 0) valid.push_back(Corner);
-    } else if (top_left) {
-        jump = {1, -1};
-        if (check_residue(residues, residues[i].coords, 1, -1) < 0) valid.push_back(Corner);
-    } else if (top_right) {
-        jump = {-1, -1};
-        if (check_residue(residues, residues[i].coords, -1, -1) < 0) valid.push_back(Corner);
-    } else if (bottom_left) {
-        jump = {1, 1};
-        if (check_residue(residues, residues[i].coords, 1, 1) < 0) {
-            valid.push_back(Corner);
+    // List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
+    // The amount of braces required for something like this is just absurd.
+    std::array<std::array<Eigen::Vector2i, 2>, 4> corners = {{{{{1,0},{0,-1}}}, {{{-1,0},{0,-1}}}, {{{0,1},{0,1}}}, {{{1,0},{0,1}}}}};
+    for (int j = 0; j < 4; j++) {
+        if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
+            abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
+            jump = corners[j][0]+corners[j][1];
+            if (check_residue(residues, residues[i].coords, jump) < 0) valid.push_back(Corner);
         }
     }
     if (valid.size() == 0) return -1;
@@ -177,9 +153,7 @@ int Protein::attempt_move(int i)
     Move action = valid[rand() % valid.size()];
     switch (action) {
     case Corner:
-        //        std::cout << residues[i].coords.transpose() << " " << jump.transpose() << "\n";
         residues[i].coords += jump;
-        //        std::cout << residues[i].coords.transpose() << "\n";
         break;
     case End:
         now = std::chrono::high_resolution_clock::now();
@@ -197,13 +171,6 @@ int main()
         protein.update();
         float cost = energy(protein.residues);
         std::cout << cost << "\n";
-        // if (cost <= -2) {
-        //     for (int j = 0; j < protein.residues.size(); j++) {
-        //         if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
-        //         std::cout << protein.residues[j].coords << "\n\n";
-        //     }
-        //     return 0;
-        // }
     }
     for (int j = 0; j < protein.residues.size(); j++) {
         if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
