@@ -32,7 +32,7 @@ def draw_protein(protein, ax):
 def standard_view():
     fig, axs = plt.subplots(2, 2)
     sequence = "HPPHPH"
-    protein = fold.Protein(sequence, 2, False)
+    protein = fold.Protein(sequence, 2, True)
     energies, densities, exposures = [], [], []
     def animate(i):
         protein.update()
@@ -68,4 +68,17 @@ def standard_view():
     ani = animation.FuncAnimation(fig, animate, interval=1) 
     plt.show()
 
-standard_view()
+def landscape_view():
+    sequence = "HPPHPH"
+    protein1 = fold.Protein(sequence, 2, True)
+    protein2 = fold.Protein(sequence, 2, False)
+    energies_a, energies_b = [], []
+    for i in range(300):
+        protein1.update()
+        energies_a.append(protein1.score)
+        protein2.update()
+        energies_b.append(protein2.score)
+    plt.plot(energies_a + list(reversed(energies_b)))
+    plt.show()
+
+landscape_view()
