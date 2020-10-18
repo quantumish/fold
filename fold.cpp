@@ -52,36 +52,55 @@ float energy(std::vector<Residue> residues)
     float energy = 0;
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].polar == true) continue;
-        //energy -= (4-exposure(residues, i)) * 1/10;
-        for (int j = 0; j < residues.size(); j++) {
+        for ( int j = 0; j < residues.size(); j++) {
             if (residues[j].polar == true || abs(i-j) == 1 || i==j) continue;
-            //std::cout << i << "(" << residues[i].coords.transpose() << ") vs " << j << "(" << residues[j].coords.transpose() << ") is " << abs((residues[i].coords - residues[j].coords).norm()) << "            
-            energy -= 1/2 * 1.0/abs((residues[i].coords - residues[j].coords).norm());
+            if ((abs(residues[i].coords[0]-residues[j].coords[0]) == 1 &&
+                abs(residues[i].coords[1]-residues[j].coords[1]) == 0) ||
+                (abs(residues[i].coords[0]-residues[j].coords[0]) == 0 &&
+                abs(residues[i].coords[1]-residues[j].coords[1]) == 1)) {
+                energy-=1;
+            }
         }
     }
-    return energy;
+    return energy/2;
 }
 
 struct Protein
 {
-    std::chrono::high_resolution_clock::time_point born = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point born;
     std::vector<Residue> residues;
     float score;
     float temperature;
-    Protein(std::string sequence, float temp);
+    Protein(std::string sequence, float temp, bool denatured);
     void update();
     int attempt_move(int i);
     int exposure(int i);
 };
 
-Protein::Protein(std::string sequence, float temp)
+Protein::Protein(std::string sequence, float temp, bool denatured)
     :temperature(temp)
 {
-    for (char c : sequence) {
-        //if (polar.find(c) > 0) residues.push_back({c, true, {0,residues.size()}});
-        //if ((int)nonpolar.find(c) > 0) residues.push_back({c, false, {0,residues.size()}});
-        if (c == 'P') residues.push_back({c, true, {0,residues.size()}});
-        else residues.push_back({c, false, {0,residues.size()}});
+    born = std::chrono::high_resolution_clock::now();
+    for (int i = 0; i < sequence.size(); i++) {
+        Eigen::Vector2i loc;
+        if (denatured) loc = {0,residues.size()};
+        else if (i==0) loc = {0,0};
+        else {
+            std::vector<Eigen::Vector2i> open_offsets;
+            if (check_residue(residues, residues[i-1].coords, 1, 0) < 0) open_offsets.push_back({residues[i-1].coords[0] + 1, residues[i-1].coords[1] - 0});
+            if (check_residue(residues, residues[i-1].coords, -1, 0) < 0) open_offsets.push_back({residues[i-1].coords[0] - 1, residues[i-1].coords[1] - 0});
+            if (check_residue(residues, residues[i-1].coords, 0, 1) < 0) open_offsets.push_back({residues[i-1].coords[0] + 0, residues[i-1].coords[1] + 1});
+            if (check_residue(residues, residues[i-1].coords, 0, -1) < 0) open_offsets.push_back({residues[i-1].coords[0] + 0, residues[i-1].coords[1] - 1});
+            auto now = std::chrono::high_resolution_clock::now();
+            srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
+            if (open_offsets.size() == 0) {
+                std::cout << "Uh oh! We folded ourself into a corner." << "\n";
+                exit(1);
+            }
+            loc = open_offsets[rand() % open_offsets.size()];
+        }
+        if (sequence[i] == 'P') residues.push_back({sequence[i], true, loc});
+        else residues.push_back({sequence[i], false, loc});
     }
 };
 
@@ -114,13 +133,16 @@ int Protein::attempt_move(int i)
         if (check_residue(residues, residues[i+prev].coords, 1, 0) < 0) {
             valid.push_back(End);
             open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
-        } else if (check_residue(residues, residues[i+prev].coords, -1, 0) < 0) {
+        }
+        if (check_residue(residues, residues[i+prev].coords, -1, 0) < 0) {
             valid.push_back(End);
             open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] - 1, residues[i+prev].coords[1] - residues[i].coords[1] - 0});
-        } else if (check_residue(residues, residues[i+prev].coords, 0, 1) < 0) {
+        }
+        if (check_residue(residues, residues[i+prev].coords, 0, 1) < 0) {
             valid.push_back(End);
             open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] + 1});
-        } else if (check_residue(residues, residues[i+prev].coords, 0, -1) < 0) {
+        }
+        if (check_residue(residues, residues[i+prev].coords, 0, -1) < 0) {
             valid.push_back(End);
             open_offsets.push_back({residues[i+prev].coords[0] - residues[i].coords[0] + 0, residues[i+prev].coords[1] - residues[i].coords[1] - 1});
         }
@@ -133,7 +155,6 @@ int Protein::attempt_move(int i)
                           abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
     bool bottom_left = (abs(i - check_residue(residues, residues[i].coords, 1, 0)) == 1 &&
                           abs(i - check_residue(residues, residues[i].coords, 0, 1)) == 1);
-    //if (i == 1) std::cout << bottom_left << "\n";
     Eigen::Vector2i jump;
     if (bottom_right) {
         jump = {-1, 1};
@@ -146,10 +167,7 @@ int Protein::attempt_move(int i)
         if (check_residue(residues, residues[i].coords, -1, -1) < 0) valid.push_back(Corner);
     } else if (bottom_left) {
         jump = {1, 1};
-        //        std::cout << "hi" << "\n";
-        //        std::cout << check_residue(residues, residues[i].coords, 1, 1) << "\n";
         if (check_residue(residues, residues[i].coords, 1, 1) < 0) {
-            //  std::cout << "yay" << "\n";
             valid.push_back(Corner);
         }
     }
@@ -174,7 +192,7 @@ int Protein::attempt_move(int i)
 
 int main()
 {
-    Protein protein ("HPPHPH", 2);
+    Protein protein ("HPPHPH", 2, true);
     for (int i = 0; i < 300; i++) {
         protein.update();
         float cost = energy(protein.residues);
@@ -201,7 +219,7 @@ PYBIND11_MODULE(fold, m) {
         .def_readonly("coords", &Residue::coords)
         .def_readonly("polar", &Residue::polar);
     py::class_<Protein>(m, "Protein")
-        .def(py::init<std::string, float>())
+        .def(py::init<std::string, float, bool>())
         .def("update", &Protein::update)
         .def_readonly("residues", &Protein::residues)
         .def_readonly("score", &Protein::score);

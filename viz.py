@@ -5,7 +5,7 @@ import fold
 
 fig, axs = plt.subplots(2, 2)
 sequence = "HPPHPH"
-protein = fold.Protein(sequence, 2)
+protein = fold.Protein(sequence, 2, False)
 energies = []
 densities = []
 exposures = []
@@ -39,7 +39,9 @@ def animate(i):
             chain.append([i.coords, protein.residues[x+1].coords])
     cc = mc.LineCollection(chain, color='black', linewidths=2, label="Chain connection")
     bc = mc.LineCollection(bonds, color='red', linewidths=2, label="Bond")
-    density = 1/((max(h_x) - min(h_x))*(max(h_y) - min(h_y))) * len(protein.residues)
+    area = ((max(h_x) - min(h_x))*(max(h_y) - min(h_y)))
+    if (area > 0): density = len(protein.residues)/area
+    else: density = 1
     densities.append(density)
     exposure = 0
     for x, i in enumerate(protein.residues):
