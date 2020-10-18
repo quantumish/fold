@@ -30,10 +30,12 @@ struct Residue
 int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, Eigen::Vector2i offset)
 {
     target += offset;
+    //    std::cout << "Checking if there's a residue at " << target.transpose() << "...\n";
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].coords == target) return i;
-    }   
-    return -1;
+    }
+    //    std::cout << "Nope!" << "\n";
+    return -5000;
 }
 
 int exposure(std::vector<Residue> residues, int i)
@@ -100,6 +102,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
         if (sequence[i] == 'P') residues.push_back({sequence[i], true, loc});
         else residues.push_back({sequence[i], false, loc});
     }
+    score = 0;
 };
 
 void Protein::update()
@@ -132,19 +135,30 @@ int Protein::attempt_move(int i)
         for (Eigen::Vector2i offset : offsets) {
             if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
                 valid.push_back(End);
+                //std::cout << "There's nothing at " << (residues[i+prev].coords+offset).transpose() << "\n";
                 open_offsets.push_back(residues[i+prev].coords - residues[i].coords + offset);
+                //std::cout << "Move to " << (residues[i+prev].coords - residues[i].coords + offset).transpose() << "is valid!\n";
             }
         }
     }
     Eigen::Vector2i jump;
     // List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
     // The amount of braces required for something like this is just absurd.
-    std::array<std::array<Eigen::Vector2i, 2>, 4> corners = {{{{{1,0},{0,-1}}}, {{{-1,0},{0,-1}}}, {{{0,1},{0,1}}}, {{{1,0},{0,1}}}}};
+    std::array<std::array<Eigen::Vector2i, 2>, 4> corners = {{{{{1,0},{0,-1}}}, {{{-1,0},{0,-1}}}, {{{-1,0},{0,1}}}, {{{1,0},{0,1}}}}};
+    // for (int j = 0; j < 4; j++) {
+    //     std::cout << corners[j][0].transpose() << "and" << corners[j][1].transpose() << "\n";
+    // }
     for (int j = 0; j < 4; j++) {
         if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
             abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
+            //std::cout << "As " << (residues[i].coords+corners[j][0]).transpose() << " (" << corners[j][0] << ") and " << (residues[i].coords+corners[j][1]).transpose() << " are next to us we're fine for corner move\n";
             jump = corners[j][0]+corners[j][1];
-            if (check_residue(residues, residues[i].coords, jump) < 0) valid.push_back(Corner);
+            //std::cout << "Our jump would be to " << (residues[i].coords+jump).transpose() << "\n";
+            if (check_residue(residues, residues[i].coords, jump) < 0) {
+                valid.push_back(Corner);
+                //std::cout << "There's nothing there so we're good!" << "\n";
+                break;
+            }
         }
     }
     if (valid.size() == 0) return -1;

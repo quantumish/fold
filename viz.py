@@ -6,7 +6,7 @@ import fold
 def draw_protein(protein, ax):
     ax.clear()
     ax.set_ylim([-len(protein.residues)/3, len(protein.residues)+len(protein.residues)/3])
-    ax.set_xlim([-5, 10])
+    ax.set_xlim([-len(protein.residues)/3, len(protein.residues)+len(protein.residues)/3])
     h_x, h_y, p_x, p_y = [], [], [], []
     chain, bonds = [], []
     for x,i in enumerate(protein.residues):
@@ -29,14 +29,15 @@ def draw_protein(protein, ax):
     ax.scatter(p_x, p_y, zorder=2, label='Polar')
     return h_x, h_y, p_x, p_y
 
-def standard_view():
+def standard_view(updates):
     fig, axs = plt.subplots(2, 2)
-    sequence = "HPPHPH"
+    sequence = "HHPPHHPHHPPHHPHHPPHH"
     protein = fold.Protein(sequence, 2, True)
     energies, densities, exposures = [], [], []
     def animate(i):
-        protein.update()
-        energies.append(protein.score)
+        for i in range(updates):
+            protein.update()
+            energies.append(protein.score)
         h_x, h_y, p_x, p_y = draw_protein(protein, axs[0,0])
         area = ((max(h_x) - min(h_x))*(max(h_y) - min(h_y)))
         if (area > 0): density = len(protein.residues)/area
@@ -69,7 +70,7 @@ def standard_view():
     plt.show()
 
 def landscape_view():
-    sequence = "HPPHPH"
+    sequence = "HHPPHHPHHPPHHPHHPPHH"
     protein1 = fold.Protein(sequence, 2, True)
     protein2 = fold.Protein(sequence, 2, False)
     energies_a, energies_b = [], []
@@ -81,4 +82,5 @@ def landscape_view():
     plt.plot(energies_a + list(reversed(energies_b)))
     plt.show()
 
-landscape_view()
+#standard_view(1)
+#landscape_view()
