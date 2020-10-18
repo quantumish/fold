@@ -44,7 +44,7 @@ def animate(i):
     exposure = 0
     for x, i in enumerate(protein.residues):
         if i.polar == False:
-            exposure += protein.exposure(x)
+            exposure += fold.exposure(protein.residues, x)
     exposure /= len(h_x)
     exposures.append(exposure)
     axs[0,0].add_collection(cc)

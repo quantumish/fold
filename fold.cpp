@@ -25,19 +25,41 @@ struct Residue
     Eigen::Vector2i coords;
 };
 
+// Takes residue chain and a coordinate, checks if there is a residue there. O(n).
+int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, int x_offset = 0, int y_offset = 0)
+{
+    target[0] += x_offset;
+    target[1] += y_offset;
+    for (int i = 0; i < residues.size(); i++) {
+        if (residues[i].coords == target) return i;
+    }   
+    return -1;
+}
+
+int exposure(std::vector<Residue> residues, int i)
+{
+    int n = 0;
+    if (check_residue(residues, residues[i].coords, -1, 0) < 0) n++;
+    if (check_residue(residues, residues[i].coords, 1, 0) < 0) n++;
+    if (check_residue(residues, residues[i].coords, 0, -1) < 0) n++;
+    if (check_residue(residues, residues[i].coords, 0, 1) < 0) n++;
+    return n;
+}
+
 // Takes residue chain and calculates energy score. O(n^2).
 float energy(std::vector<Residue> residues)
 {
     float energy = 0;
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].polar == true) continue;
+        //energy -= (4-exposure(residues, i)) * 1/10;
         for (int j = 0; j < residues.size(); j++) {
             if (residues[j].polar == true || abs(i-j) == 1 || i==j) continue;
             //std::cout << i << "(" << residues[i].coords.transpose() << ") vs " << j << "(" << residues[j].coords.transpose() << ") is " << abs((residues[i].coords - residues[j].coords).norm()) << "            
-            energy -= 1.0/abs((residues[i].coords - residues[j].coords).norm());
+            energy -= 1/2 * 1.0/abs((residues[i].coords - residues[j].coords).norm());
         }
     }
-    return energy/2;
+    return energy;
 }
 
 struct Protein
@@ -79,17 +101,6 @@ void Protein::update()
     if (delta > 0) residues = old;
     else score = updated;
 };
-
-// Takes residue chain and a coordinate, checks if there is a residue there. O(n).
-int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, int x_offset = 0, int y_offset = 0)
-{
-    target[0] += x_offset;
-    target[1] += y_offset;
-    for (int i = 0; i < residues.size(); i++) {
-        if (residues[i].coords == target) return i;
-    }   
-    return -1;
-}
 
 // Takes a index in a residue chain, tries a random move that is valid for it
 int Protein::attempt_move(int i)
@@ -161,16 +172,6 @@ int Protein::attempt_move(int i)
     return 0;
 }
 
-int Protein::exposure(int i)
-{
-    int n = 0;
-    if (check_residue(residues, residues[i].coords, -1, 0) < 0) n++;
-    if (check_residue(residues, residues[i].coords, 1, 0) < 0) n++;
-    if (check_residue(residues, residues[i].coords, 0, -1) < 0) n++;
-    if (check_residue(residues, residues[i].coords, 0, 1) < 0) n++;
-    return n;
-}
-
 int main()
 {
     Protein protein ("HPPHPH", 2);
@@ -202,8 +203,8 @@ PYBIND11_MODULE(fold, m) {
     py::class_<Protein>(m, "Protein")
         .def(py::init<std::string, float>())
         .def("update", &Protein::update)
-        .def("exposure", &Protein::exposure, py::arg("i"))
         .def_readonly("residues", &Protein::residues)
         .def_readonly("score", &Protein::score);
+    m.def("exposure", &exposure, py::arg("residues"), py::arg("i"));
 }
 #endif
