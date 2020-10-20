@@ -15,6 +15,8 @@
 namespace py = pybind11;
 #endif
 
+#define BOLTZ_CONST (1.380649 * pow(10, -23))
+
 std::string polar = "QNHSTYC";
 std::string nonpolar = "AILMFVPG";
 enum Move {End, Corner, Crankshaft};
@@ -48,6 +50,12 @@ int exposure(std::vector<Residue> residues, int i)
     return n;
 }
 
+float sigmoidish(float x, float T)
+{
+    if (x>0) return 1;
+    else return 1/(20+exp(x/T));
+}
+
 // Takes residue chain and calculates energy score. O(n^2).
 float energy(std::vector<Residue> residues)
 {
@@ -59,9 +67,9 @@ float energy(std::vector<Residue> residues)
                 abs(residues[i].coords[1]-residues[j].coords[1]) == 0) ||
                 (abs(residues[i].coords[0]-residues[j].coords[0]) == 0 &&
                 abs(residues[i].coords[1]-residues[j].coords[1]) == 1)) {
-                if (residues[i].polar && !residues[j].polar) energy-=1.2;
-                else if (!residues[i].polar && residues[j].polar) energy-=1.2;
-                else energy-=3;
+                //if (residues[i].polar && !residues[j].polar) energy-=1.2;
+                //else if (!residues[i].polar && residues[j].polar) energy-=1.2;
+                if (!residues[i].polar && !residues[j].polar) energy-=1;
             }
         }
     }
@@ -117,9 +125,9 @@ void Protein::update()
     float delta = updated - energy(old);
     // now = std::chrono::high_resolution_clock::now();
     // srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
-    // float rndm = (float)rand()/RAND_MAX;
+    float rndm = (float)rand()/RAND_MAX;
     // std::cout << rndm << " vs exp((" << -delta << " + 0.1) /" << temperature << ") so " << exp((-delta + 0.1)/temperature) << "\n";
-    if (delta > 0) residues = old;
+    if (rndm > sigmoidish(delta, temperature)) residues = old;
     else score = updated;
 };
 
