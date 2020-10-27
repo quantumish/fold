@@ -20,6 +20,7 @@ namespace py = pybind11;
 std::string polar = "QNHSTYC";
 std::string nonpolar = "AILMFVPG";
 enum Move {End, Corner, Crankshaft};
+std::string amino = "CMFILVWYAGTSNQDEHRKP";
 float interactions[20][20] =
     {{-3.477, -2.240, -2.424, -2.410, -2.343, -2.258, -2.080, -1.892, -1.700, -1.101,  -1.243, -1.306, -0.788, -0.835, -0.616, -0.179, -1.499, -0.771, -0.112, -1.196},
      {-2.240, -1.901, -2.304, -2.286, -2.208, -2.079, -2.090, -1.834, -1.517, -0.897,  -0.999, -0.893, -0.658, -0.720, -0.409, -0.209, -1.252, -0.611, -0.146, -0.788}, 
@@ -44,7 +45,7 @@ float interactions[20][20] =
 
 struct Residue
 {
-    char id;
+    int id;
     bool polar;
     Eigen::Vector2i coords;
 };
@@ -83,14 +84,12 @@ float energy(std::vector<Residue> residues)
     float energy = 0;
     for (int i = 0; i < residues.size(); i++) {
         for ( int j = 0; j < residues.size(); j++) {
-            if ((residues[j].polar && residues[i].polar) || abs(i-j) == 1 || i==j) continue;
+            if (abs(i-j) == 1 || i==j) continue;
             if ((abs(residues[i].coords[0]-residues[j].coords[0]) == 1 &&
                 abs(residues[i].coords[1]-residues[j].coords[1]) == 0) ||
                 (abs(residues[i].coords[0]-residues[j].coords[0]) == 0 &&
                 abs(residues[i].coords[1]-residues[j].coords[1]) == 1)) {
-                //if (residues[i].polar && !residues[j].polar) energy-=1.2; xz
-                //else if (!residues[i].polar && residues[j].polar) energy-=1.2;
-                if (!residues[i].polar && !residues[j].polar) energy-=1;
+                energy-=interactions[residues[i].id][residues[j].id];
             }
         }
     }
@@ -129,8 +128,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
             }
             loc = open_offsets[rand() % open_offsets.size()];
         }
-        if (sequence[i] == 'P') residues.push_back({sequence[i], true, loc});
-        else residues.push_back({sequence[i], false, loc});
+        residues.push_back({static_cast<int>(amino.find(sequence[i])), true, loc});
     }
     score = 0;
 };
@@ -144,11 +142,8 @@ void Protein::update()
     if (code == -1) return;
     float updated = energy(residues);
     float delta = updated - energy(old);
-    // now = std::chrono::high_resolution_clock::now();
-    // srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
     float rndm = (float)rand()/RAND_MAX;
-    // std::cout << rndm << " vs exp((" << -delta << " + 0.1) /" << temperature << ") so " << exp((-delta + 0.1)/temperature) << "\n";
-    if (rndm > sigmoidish(delta, temperature)) residues = old;
+    if (delta > 0) residues = old;
     else score = updated;
 };
 
@@ -165,9 +160,7 @@ int Protein::attempt_move(int i)
         for (Eigen::Vector2i offset : offsets) {
             if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
                 valid.push_back(End);
-                //std::cout << "There's nothing at " << (residues[i+prev].coords+offset).transpose() << "\n";
                 open_offsets.push_back(residues[i+prev].coords - residues[i].coords + offset);
-                //std::cout << "Move to " << (residues[i+prev].coords - residues[i].coords + offset).transpose() << "is valid!\n";
             }
         }
     }
@@ -175,18 +168,12 @@ int Protein::attempt_move(int i)
     // List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
     // The amount of braces required for something like this is just absurd.
     std::array<std::array<Eigen::Vector2i, 2>, 4> corners = {{{{{1,0},{0,-1}}}, {{{-1,0},{0,-1}}}, {{{-1,0},{0,1}}}, {{{1,0},{0,1}}}}};
-    // for (int j = 0; j < 4; j++) {
-    //     std::cout << corners[j][0].transpose() << "and" << corners[j][1].transpose() << "\n";
-    // }
     for (int j = 0; j < 4; j++) {
         if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
             abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
-            //std::cout << "As " << (residues[i].coords+corners[j][0]).transpose() << " (" << corners[j][0] << ") and " << (residues[i].coords+corners[j][1]).transpose() << " are next to us we're fine for corner move\n";
             jump = corners[j][0]+corners[j][1];
-            //std::cout << "Our jump would be to " << (residues[i].coords+jump).transpose() << "\n";
             if (check_residue(residues, residues[i].coords, jump) < 0) {
                 valid.push_back(Corner);
-                //std::cout << "There's nothing there so we're good!" << "\n";
                 break;
             }
         }
@@ -214,12 +201,12 @@ int main()
     for (int i = 0; i < 300; i++) {
         protein.update();
         float cost = energy(protein.residues);
-        std::cout << cost << "\n";
+        //std::cout << cost << "\n";
     }
-    for (int j = 0; j < protein.residues.size(); j++) {
-        if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
-        std::cout << protein.residues[j].coords << "\n\n";
-    }
+    // for (int j = 0; j < protein.residues.size(); j++) {
+    //     if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
+    //     std::cout << protein.residues[j].coords << "\n\n";
+    // }
 }
 
 #ifdef PYTHON
