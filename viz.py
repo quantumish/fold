@@ -87,4 +87,35 @@ def landscape_view():
     plt.show()
 
 #standard_view(100)
-landscape_view()
+#landscape_view()
+sequence = "NLYIQWLKDGGPSSGRPPPS"
+protein = fold.Protein(sequence, 2, True)
+from mpl_toolkits.mplot3d import Axes3D
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+ax.clear()
+#ax.set_ylim([-len(protein.residues)/3, len(protein.residues)+len(protein.residues)/3])
+#ax.set_xlim([-len(protein.residues)/3, (len(protein.residues)+len(protein.residues)/3)/2])
+h_x, h_y, h_z, p_x, p_y, p_z = [], [], [], [], [], []
+chain, bonds = [], []
+for x,i in enumerate(protein.residues):
+            if i.polar == True:
+                p_x.append(i.coords[0])
+                p_y.append(i.coords[1])
+                p_z.append(i.coords[2])
+            else:
+                h_x.append(i.coords[0])
+                h_y.append(i.coords[1])
+                h_z.append(i.coords[2])
+            # for y,j in enumerate(protein.residues):
+            #     if (abs(y-x) > 1 and ((abs(i.coords[0]-j.coords[0]) == 1 and abs(i.coords[1]-j.coords[1]) == 0) or (abs(i.coords[0]-j.coords[0]) == 0 and abs(i.coords[1]-j.coords[1]) == 1)) and j.polar == False and i.polar == False):
+            #         bonds.append([i.coords, j.coords])
+            # if (x != len(protein.residues)-1):
+            #     chain.append([i.coords, protein.residues[x+1].coords])
+#cc = mc.LineCollection(chain, color='black', linewidths=2, label="Chain connection")
+#bc = mc.LineCollection(bonds, color='red', linewidths=2, label="Bond")
+#ax.add_collection(cc)
+#ax.add_collection(bc)
+ax.scatter(h_x, h_y, h_z, label='Hydrophobic')
+ax.scatter(p_x, p_y, p_z, label='Polar')
+plt.show()

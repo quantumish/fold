@@ -47,11 +47,11 @@ struct Residue
 {
     int id;
     bool polar;
-    Eigen::Vector2i coords;
+    Eigen::Vector3i coords;
 };
 
 // Takes residue chain and a coordinate, checks if there is a residue there. O(n).
-int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, Eigen::Vector2i offset)
+int check_residue(std::vector<Residue> residues, Eigen::Vector3i target, Eigen::Vector3i offset)
 {
     target += offset;
     //    std::cout << "Checking if there's a residue at " << target.transpose() << "...\n";
@@ -65,10 +65,10 @@ int check_residue(std::vector<Residue> residues, Eigen::Vector2i target, Eigen::
 int exposure(std::vector<Residue> residues, int i)
 {
     int n = 0;
-    if (check_residue(residues, residues[i].coords, {-1, 0}) < 0) n++;
-    if (check_residue(residues, residues[i].coords, {1, 0}) < 0) n++;
-    if (check_residue(residues, residues[i].coords, {0, -1}) < 0) n++;
-    if (check_residue(residues, residues[i].coords, {0, 1}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {-1, 0, 0}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {1, 0, 0}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {0, -1, 0}) < 0) n++;
+    if (check_residue(residues, residues[i].coords, {0, 1, 0}) < 0) n++;
     return n;
 }
 
@@ -113,13 +113,15 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 {
     born = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < sequence.size(); i++) {
-        Eigen::Vector2i loc;
-        if (denatured) loc = {0,residues.size()};
-        else if (i==0) loc = {0,0};
+        Eigen::Vector3i loc;
+        bool polarity = false;
+        if (polar.find(sequence[i]) != std::string::npos) polarity = true;
+        if (denatured) loc = {0,residues.size(),0};
+        else if (i==0) loc = {0,0,0};
         else {
-            std::vector<Eigen::Vector2i> open_offsets;
-            std::array<Eigen::Vector2i, 4> offsets = {{{1,0},{-1,0},{0,1},{0,-1}}};
-            for (Eigen::Vector2i offset : offsets) if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
+            std::vector<Eigen::Vector3i> open_offsets;
+            std::array<Eigen::Vector3i, 4> offsets = {{{1,0,0},{-1,0,0},{0,1,0},{0,-1,0}}};
+            for (Eigen::Vector3i offset : offsets) if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
             auto now = std::chrono::high_resolution_clock::now();
             srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
             if (open_offsets.size() == 0) {
@@ -128,7 +130,8 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
             }
             loc = open_offsets[rand() % open_offsets.size()];
         }
-        residues.push_back({static_cast<int>(amino.find(sequence[i])), true, loc});
+        std::cout << polarity << "\n";
+        residues.push_back({static_cast<int>(amino.find(sequence[i])), polarity, loc});
     }
     score = 0;
 };
@@ -151,23 +154,23 @@ void Protein::update()
 int Protein::attempt_move(int i)
 {
     std::vector<Move> valid;
-    std::vector<Eigen::Vector2i> open_offsets;
+    std::vector<Eigen::Vector3i> open_offsets;
     if (i == 0 || i == residues.size()-1) {
-        std::array<Eigen::Vector2i, 4> offsets = {{{1,0},{-1,0},{0,1},{0,-1}}};
+        std::array<Eigen::Vector3i, 4> offsets = {{{1,0,0},{-1,0,0},{0,1,0},{0,-1,0}}};
         int prev;
         if (i == 0) prev = 1;
         if (i == residues.size()-1) prev = -1;
-        for (Eigen::Vector2i offset : offsets) {
+        for (Eigen::Vector3i offset : offsets) {
             if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
                 valid.push_back(End);
                 open_offsets.push_back(residues[i+prev].coords - residues[i].coords + offset);
             }
         }
     }
-    Eigen::Vector2i jump;
+    Eigen::Vector3i jump;
     // List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
     // The amount of braces required for something like this is just absurd.
-    std::array<std::array<Eigen::Vector2i, 2>, 4> corners = {{{{{1,0},{0,-1}}}, {{{-1,0},{0,-1}}}, {{{-1,0},{0,1}}}, {{{1,0},{0,1}}}}};
+    std::array<std::array<Eigen::Vector3i, 2>, 4> corners = {{{{{1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,1,0}}}, {{{1,0,0},{0,1,0}}}}};
     for (int j = 0; j < 4; j++) {
         if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
             abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
