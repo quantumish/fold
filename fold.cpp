@@ -54,12 +54,10 @@ struct Residue
 int check_residue(std::vector<Residue> residues, Eigen::Vector3i target, Eigen::Vector3i offset)
 {
     target += offset;
-    //    std::cout << "Checking if there's a residue at " << target.transpose() << "...\n";
     for (int i = 0; i < residues.size(); i++) {
         if (residues[i].coords == target) return i;
     }
-    //    std::cout << "Nope!" << "\n";
-    return -5000;
+    return -2;
 }
 
 int exposure(std::vector<Residue> residues, int i)
@@ -85,10 +83,7 @@ float energy(std::vector<Residue> residues)
     for (int i = 0; i < residues.size(); i++) {
         for ( int j = 0; j < residues.size(); j++) {
             if (abs(i-j) == 1 || i==j) continue;
-            if ((abs(residues[i].coords[0]-residues[j].coords[0]) == 1 &&
-                abs(residues[i].coords[1]-residues[j].coords[1]) == 0) ||
-                (abs(residues[i].coords[0]-residues[j].coords[0]) == 0 &&
-                abs(residues[i].coords[1]-residues[j].coords[1]) == 1)) {
+            if ((residues[i].coords-residues[j].coords).norm() == 1) {
                 energy-=interactions[residues[i].id][residues[j].id];
             }
         }
@@ -120,8 +115,13 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
         else if (i==0) loc = {0,0,0};
         else {
             std::vector<Eigen::Vector3i> open_offsets;
-            std::array<Eigen::Vector3i, 4> offsets = {{{1,0,0},{-1,0,0},{0,1,0},{0,-1,0}}};
-            for (Eigen::Vector3i offset : offsets) if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
+            for (int j = 0; j < 3; j++) {
+                Eigen::Vector3i offset = {0,0,0};
+                offset[j] = 1;
+                if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
+                offset[j] = -1;
+                if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);                
+            }
             auto now = std::chrono::high_resolution_clock::now();
             srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
             if (open_offsets.size() == 0) {
@@ -156,16 +156,21 @@ int Protein::attempt_move(int i)
     std::vector<Move> valid;
     std::vector<Eigen::Vector3i> open_offsets;
     if (i == 0 || i == residues.size()-1) {
-        std::array<Eigen::Vector3i, 4> offsets = {{{1,0,0},{-1,0,0},{0,1,0},{0,-1,0}}};
-        int prev;
-        if (i == 0) prev = 1;
+        int prev = 1;
         if (i == residues.size()-1) prev = -1;
-        for (Eigen::Vector3i offset : offsets) {
-            if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
-                valid.push_back(End);
-                open_offsets.push_back(residues[i+prev].coords - residues[i].coords + offset);
+        bool end = false;
+        for (int j = 0; j < 3; j++) {
+            for (int k : {1, -1}) {
+                Eigen::Vector3i offset = {0,0,0};
+                offset[j] = k;
+                if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
+                    end = true;
+                    open_offsets.push_back(residues[i+prev].coords+offset);
+                }
+                std::cout << residues[i+prev].coords << "\n\n" << offset << "\n\n\n";
             }
         }
+        if (end == true) valid.push_back(End);
     }
     Eigen::Vector3i jump;
     // List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
@@ -204,12 +209,7 @@ int main()
     for (int i = 0; i < 300; i++) {
         protein.update();
         float cost = energy(protein.residues);
-        //std::cout << cost << "\n";
     }
-    // for (int j = 0; j < protein.residues.size(); j++) {
-    //     if (protein.residues[j].polar == false) std::cout << "(H)" << "\n";
-    //     std::cout << protein.residues[j].coords << "\n\n";
-    // }
 }
 
 #ifdef PYTHON

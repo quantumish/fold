@@ -91,9 +91,10 @@ def landscape_view():
 
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
+import numpy as np
 def threedimview():
     sequence = "NLYIQWLKDGGPSSGRPPPS"
-    protein = fold.Protein(sequence, 2, True)
+    protein = fold.Protein(sequence, 2, False)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     def animate(test):
@@ -113,7 +114,7 @@ def threedimview():
                 h_y.append(i.coords[1])
                 h_z.append(i.coords[2])
             for y,j in enumerate(protein.residues):
-                if (abs(y-x) > 1 and ((abs(i.coords[0]-j.coords[0]) == 1 and abs(i.coords[1]-j.coords[1]) == 0) or (abs(i.coords[0]-j.coords[0]) == 0 and abs(i.coords[1]-j.coords[1]) == 1)) and j.polar == False and i.polar == False):
+                if (abs(y-x) > 1 and (np.linalg.norm(np.array(i.coords)-np.array(j.coords)) == 1) and j.polar == False and i.polar == False):
                     bonds.append([i.coords, j.coords])
             if (x != len(protein.residues)-1):
                 chain.append([i.coords, protein.residues[x+1].coords])
