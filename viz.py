@@ -92,13 +92,14 @@ def landscape_view():
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 import numpy as np
-def threedimview():
+def threedimview(step):
     sequence = "NLYIQWLKDGGPSSGRPPPS"
     protein = fold.Protein(sequence, 2, False)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     def animate(test):
-        protein.update()
+        for i in range(step):
+            protein.update()
         ax.clear()
         #ax.set_ylim([-len(protein.residues)/3, len(protein.residues)+len(protein.residues)/3])
         #ax.set_xlim([-len(protein.residues)/3, (len(protein.residues)+len(protein.residues)/3)/2])
@@ -127,4 +128,4 @@ def threedimview():
     ani = animation.FuncAnimation(fig, animate, interval=1) 
     plt.show()
 
-threedimview()
+threedimview(500)

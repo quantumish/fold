@@ -130,7 +130,6 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
             }
             loc = open_offsets[rand() % open_offsets.size()];
         }
-        std::cout << polarity << "\n";
         residues.push_back({static_cast<int>(amino.find(sequence[i])), polarity, loc});
     }
     score = 0;
@@ -167,7 +166,6 @@ int Protein::attempt_move(int i)
                     end = true;
                     open_offsets.push_back(residues[i+prev].coords+offset);
                 }
-                std::cout << residues[i+prev].coords << "\n\n" << offset << "\n\n\n";
             }
         }
         if (end == true) valid.push_back(End);
@@ -197,7 +195,7 @@ int Protein::attempt_move(int i)
     case End:
         now = std::chrono::high_resolution_clock::now();
         srand(std::chrono::duration_cast<std::chrono::nanoseconds>(now - born).count());
-        residues[i].coords += open_offsets[rand() % open_offsets.size()];
+        residues[i].coords = open_offsets[rand() % open_offsets.size()];
         break;
     }
     return 0;
