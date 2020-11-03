@@ -173,8 +173,9 @@ int Protein::attempt_move(int i)
     Eigen::Vector3i jump;
     // List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
     // The amount of braces required for something like this is just absurd.
-    std::array<std::array<Eigen::Vector3i, 2>, 4> corners = {{{{{1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,1,0}}}, {{{1,0,0},{0,1,0}}}}};
-    for (int j = 0; j < 4; j++) {
+    std::array<std::array<Eigen::Vector3i, 2>, 8> corners = {{{{{1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,1,0}}}, {{{1,0,0},{0,1,0}}},
+                                                                                                                                  {{{0,1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,1}}}, {{{0,1,0},{0,0,1}}}}};
+    for (int j = 0; j < 8; j++) {
         if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
             abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
             jump = corners[j][0]+corners[j][1];
