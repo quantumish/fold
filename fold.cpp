@@ -84,7 +84,7 @@ float energy(std::vector<Residue> residues)
         for ( int j = 0; j < residues.size(); j++) {
             if (abs(i-j) == 1 || i==j) continue;
             if ((residues[i].coords-residues[j].coords).norm() == 1) {
-                energy-=interactions[residues[i].id][residues[j].id];
+                energy+=interactions[residues[i].id][residues[j].id];
             }
         }
     }
