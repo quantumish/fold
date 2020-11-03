@@ -145,7 +145,7 @@ void Protein::update()
     float updated = energy(residues);
     float delta = updated - energy(old);
     float rndm = (float)rand()/RAND_MAX;
-    if (delta > 0) residues = old;
+    if (rndm > sigmoidish(delta, temperature)) residues = old;
     else score = updated;
 };
 
@@ -190,6 +190,7 @@ int Protein::attempt_move(int i)
     Move action = valid[rand() % valid.size()];
     switch (action) {
     case Corner:
+        //std::cout << "YAY CORNER [RES " << i << " MOVE BY " << jump.transpose() << "]\n";
         residues[i].coords += jump;
         break;
     case End:
