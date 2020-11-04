@@ -133,45 +133,6 @@ def threedimview(step, temp):
     ani = animation.FuncAnimation(fig, animate, interval=1) 
     plt.show()
 
-def monitor(iters):
-    sequence = "NLYIQWLKDGGPSSGRPPPS"
-    protein = fold.Protein(sequence, 2, True)
-    energies = []
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    def animate(test):
-        protein.update()
-        energies.append(protein.score)
-        plt.clf()
-        plt.plot(energies)
-    ani = animation.FuncAnimation(fig, animate, interval=1)
-    plt.show()
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    h_x, h_y, h_z, p_x, p_y, p_z = [], [], [], [], [], []
-    chain, bonds = [], []
-    for x,i in enumerate(protein.residues):
-        if i.polar == True:
-            p_x.append(i.coords[0])
-            p_y.append(i.coords[1])
-            p_z.append(i.coords[2])
-        else:
-            h_x.append(i.coords[0])
-            h_y.append(i.coords[1])
-            h_z.append(i.coords[2])
-        for y,j in enumerate(protein.residues):
-            if (abs(y-x) > 1 and (np.linalg.norm(np.array(i.coords)-np.array(j.coords)) == 1) and j.polar == False and i.polar == False):
-                bonds.append([i.coords, j.coords])
-        if (x != len(protein.residues)-1):
-            chain.append([i.coords, protein.residues[x+1].coords])
-    cc = Line3DCollection(chain, color='black', linewidths=2, label="Chain connection")
-    bc = Line3DCollection(bonds, color='red', linewidths=2, label="Bond")
-    ax.add_collection(cc)
-    ax.add_collection(bc)
-    ax.scatter(h_x, h_y, h_z, zorder=2, label='Hydrophobic')
-    ax.scatter(p_x, p_y, p_z, zorder=2, label='Polar')
-    plt.show()
-
-threedimview(1000, 0.5)
-#monitor(1)
+threedimview(10000, 2)
+#monitor(1000)
 #landscape_view()
