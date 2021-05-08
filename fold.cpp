@@ -2,6 +2,7 @@
 #include <vector>
 #include <array>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <cstdlib>
 #include <random>
@@ -53,24 +54,34 @@ struct Residue
 	Eigen::Vector3i side_chain;
 };
 
-// Takes residue chain and a coordinate, checks if there is a residue there. O(n).
-int check_residue(std::vector<Residue> residues, Eigen::Vector3i target, Eigen::Vector3i offset)
+/*
+Takes residue chain `residues` and three-dimensional coordinates
+and checks if there is a residue at supplied coordinates.
+If there is one there, returns the location of the residue in the protein sequence.
+If there is no such residue, return empty std::nullopt. O(n) 
+*/
+static std::optional<size_t> check_for_residue(std::vector<Residue> residues, Eigen::Vector3i loc)
 {
+	for (int i = 0; i < residues.size(); i++) if (residues[i].coords == loc) return i;
+    return std::nullopt;
+}
 
-	target += offset;
-	for (int i = 0; i < residues.size(); i++) {
-		if (residues[i].coords == target) return i;
-	}
-	return -2;
+// Overloaded `check_for_residue()` that adds a given 3d offset to
+// given coordinates yet otherwise acts the same.
+static std::optional<size_t> check_for_residue(std::vector<Residue> residues, Eigen::Vector3i loc, Eigen::Vector3i offset);
+{
+	loc += offset;
+	for (int i = 0; i < residues.size(); i++) if (residues[i].coords == loc) return i;
+    return std::nullopt;
 }
 
 int exposure(std::vector<Residue> residues, int i)
 {
 	int n = 0;
-	if (check_residue(residues, residues[i].coords, {-1, 0, 0}) < 0) n++;
-	if (check_residue(residues, residues[i].coords, {1, 0, 0}) < 0) n++;
-	if (check_residue(residues, residues[i].coords, {0, -1, 0}) < 0) n++;
-	if (check_residue(residues, residues[i].coords, {0, 1, 0}) < 0) n++;
+	if (!check_for_residue(residues, residues[i].coords, {-1, 0, 0}).has_value()) n++;
+	if (!check_for_residue(residues, residues[i].coords, {1, 0, 0}).has_value()) n++;
+	if (!check_for_residue(residues, residues[i].coords, {0, -1, 0}).has_value()) n++;
+	if (!check_for_residue(residues, residues[i].coords, {0, 1, 0}).has_value()) n++;
 	return n;
 }
 
@@ -114,14 +125,18 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 		Eigen::Vector3i loc;
 		if (denatured) loc = {0,residues.size(),0};
 		else if (i==0) loc = {0,0,0};
-		else {
+		else {			
 			std::vector<Eigen::Vector3i> open_offsets;
 			for (int j = 0; j < 3; j++) {
 				Eigen::Vector3i offset = {0,0,0};
 				offset[j] = 1;
-				if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
+				if (!check_for_residue(residues, residues[i-1].coords, offset).has_value()) {
+					open_offsets.push_back(residues[i-1].coords+offset);
+				}
 				offset[j] = -1;
-				if (check_residue(residues, residues[i-1].coords, offset) < 0) open_offsets.push_back(residues[i-1].coords+offset);
+				if (!check_for_residue(residues, residues[i-1].coords, offset).has_value()) {
+					open_offsets.push_back(residues[i-1].coords+offset);
+				}
 			}
 			auto now = std::chrono::high_resolution_clock::now();
 			if (open_offsets.size() == 0) {
@@ -161,7 +176,7 @@ int Protein::attempt_move(int i)
 			for (int k : {1, -1}) {
 				Eigen::Vector3i offset = {0,0,0};
 				offset[j] = k;
-				if (check_residue(residues, residues[i+prev].coords, offset) < 0) {
+				if (!check_for_residue(residues, residues[i+prev].coords, offset).has_value()) {
 					end = true;
 					open_offsets.push_back(residues[i+prev].coords+offset);
 				}
@@ -172,15 +187,19 @@ int Protein::attempt_move(int i)
 	Eigen::Vector3i jump;
 	// List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
 	// The amount of braces required for something like this is just absurd.
-	std::array<std::array<Eigen::Vector3i, 2>, 8> corners = {{{{{1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,1,0}}}, {{{1,0,0},{0,1,0}}},
-															{{{0,1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,1}}}, {{{0,1,0},{0,0,1}}}};
+	// TODO: This is somewhat unacceptable.
+	std::array<std::array<Eigen::Vector3i, 2>, 8> corners = {
+		{{{{1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,1,0}}}, {{{1,0,0},{0,1,0}}},
+		 {{{0,1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,1}}}, {{{0,1,0},{0,0,1}}}}
+	};
 	for (int j = 0; j < 8; j++) {
-		if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
-			abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
-			jump = corners[j][0]+corners[j][1];
-			if (check_residue(residues, residues[i].coords, jump) < 0) {
+		if (abs(i - check_for_residue(residues, residues[i].coords, corners[j][0])).value_or(NULL) == 1 &&
+			abs(i - check_for_residue(residues, residues[i].coords, corners[j][1])).value_or(NULL) == 1) {			
+			Eigen::Vector3i potential_jump = corners[j][0]+corners[j][1];
+			if (!check_for_residue(residues, residues[i].coords, potential_jump).has_value()) {
 				valid.push_back(Corner);
 				break;
+				
 			}
 		}
 	}
