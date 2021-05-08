@@ -7,6 +7,7 @@
 #include <random>
 #include <ctime>
 #include <chrono>
+#include <map>
 
 #ifdef PYTHON
 #include <pybind11/pybind11.h>
@@ -16,9 +17,11 @@ namespace py = pybind11;
 #endif
 
 constexpr double BOLTZ_CONST = 1.380649e-23;
-
-std::string polar = "QNHSTYC";
-std::string nonpolar = "AILMFVPG";
+std::map<char, int> amino_acid_map = {
+    {'C', 0},  {'M', 1},  {'F', 2},  {'I', 3},  {'L', 4},  {'V', 5},  {'W', 6},
+    {'Y', 7},  {'A', 8},  {'G', 9},  {'T', 10}, {'S', 11}, {'N', 12}, {'Q', 13},
+    {'D', 14}, {'E', 15}, {'E', 16}, {'H', 17}, {'R', 18}, {'K', 19}, {'P', 14}
+};
 enum Move {End, Corner, Crankshaft};
 std::string amino = "CMFILVWYAGTSNQDEHRKP";
 float interactions[20][20] =
@@ -45,9 +48,9 @@ float interactions[20][20] =
 
 struct Residue
 {
-	int id;
-	bool polar;
+	int id;	
 	Eigen::Vector3i coords;
+	Eigen::Vector3i side_chain;
 };
 
 // Takes residue chain and a coordinate, checks if there is a residue there. O(n).
@@ -109,8 +112,6 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 {
 	for (int i = 0; i < sequence.size(); i++) {
 		Eigen::Vector3i loc;
-		bool polarity = false;
-		if (polar.find(sequence[i]) != std::string::npos) polarity = true;
 		if (denatured) loc = {0,residues.size(),0};
 		else if (i==0) loc = {0,0,0};
 		else {
@@ -129,7 +130,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 			}
 			loc = open_offsets[rand() % open_offsets.size()];
 		}
-		residues.push_back({static_cast<int>(amino.find(sequence[i])), polarity, loc});
+		residues.push_back({static_cast<int>(amino_acid_map[sequence[i]]), loc});
 	}
 	score = 0;
 };
@@ -172,7 +173,7 @@ int Protein::attempt_move(int i)
 	// List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
 	// The amount of braces required for something like this is just absurd.
 	std::array<std::array<Eigen::Vector3i, 2>, 8> corners = {{{{{1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,-1,0}}}, {{{-1,0,0},{0,1,0}}}, {{{1,0,0},{0,1,0}}},
-															{{{0,1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,1}}}, {{{0,1,0},{0,0,1}}}}};
+															{{{0,1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,1}}}, {{{0,1,0},{0,0,1}}}};
 	for (int j = 0; j < 8; j++) {
 		if (abs(i - check_residue(residues, residues[i].coords, corners[j][0])) == 1 &&
 			abs(i - check_residue(residues, residues[i].coords, corners[j][1])) == 1) {
@@ -213,8 +214,7 @@ PYBIND11_MODULE(fold, m) {
 	m.doc() = "Protein folding.";
 	py::class_<Residue>(m, "Residue")
 		.def_readonly("id", &Residue::id)
-		.def_readonly("coords", &Residue::coords)
-		.def_readonly("polar", &Residue::polar);
+		.def_readonly("coords", &Residue::coords);
 	py::class_<Protein>(m, "Protein")
 		.def(py::init<std::string, float, bool>())
 		.def("update", &Protein::update)
