@@ -107,6 +107,9 @@ float energy(std::vector<Residue> residues)
 
 class Protein
 {
+	void find_end_moves(std::vector<std::function<void(void)>>& updates, size_t i);
+	void find_corner_moves(std::vector<std::function<void(void)>>& updates, size_t i);
+	void find_sidechain_moves(std::vector<std::function<void(void)>>& updates, size_t i);
 public:
 	std::vector<Residue> residues;
 	float score;
@@ -157,12 +160,8 @@ void Protein::update()
 	else score = updated;
 };
 
-
-
-// Takes a index in the residue chain, tries a random move that is valid for it
-int Protein::attempt_move(size_t i)
+void Protein::find_end_moves(std::vector<std::function<void(void)>>& updates, size_t i)
 {
-	std::vector<Eigen::Vector3i> open_offsets;
 	if (i == 0 || i == residues.size()-1) {
 		int prev = 1;
 		if (i == residues.size()-1) prev = -1;
@@ -172,11 +171,16 @@ int Protein::attempt_move(size_t i)
 				Eigen::Vector3i offset = {0,0,0};
 				offset[j] = k;
 				if (!check_for_residue(residues, residues[i+prev].coords, offset).has_value()) {
-					open_offsets.push_back(residues[i+prev].coords+offset);
+					updates.emplace_back([this,i,prev,offset](){residues[i].coords = residues[i+prev].coords+offset;});
 				}
 			}
 		}
 	}
+}
+
+
+void Protein::find_corner_moves(std::vector<std::function<void(void)>>& updates, size_t i)
+{
 	// List of corner offsets for checking and generating fold offsets in a for loop (instead of 20 lines of if statements).
 	// The amount of braces required for something like this is just absurd.
 	// TODO: This is somewhat unacceptable.
@@ -187,15 +191,38 @@ int Protein::attempt_move(size_t i)
 	for (int j = 0; j < 8; j++) {
 		if (abs(i - check_for_residue(residues, residues[i].coords, corners[j][0])).value_or(NULL) == 1 &&
 			abs(i - check_for_residue(residues, residues[i].coords, corners[j][1])).value_or(NULL) == 1) {			
-			Eigen::Vector3i potential_jump = corners[j][0]+corners[j][1];
-			if (!check_for_residue(residues, residues[i].coords, potential_jump).has_value()) {
-				open_offsets.push_back(residues[i].coords + potential_jump);
+			Eigen::Vector3i offset = corners[j][0]+corners[j][1];
+			if (!check_for_residue(residues, residues[i].coords, offset).has_value()) {
+				updates.emplace_back([this,i,offset](){residues[i].coords+=offset;});
 				break;				
 			}
 		}
 	}
-	if (open_offsets.size() == 0) return -1;
-	residues[i].coords = open_offsets[rand() % open_offsets.size()];
+}
+
+void Protein::find_sidechain_moves(std::vector<std::function<void(void)>>& updates, size_t i)
+{
+	for (int j = 0; j < 3; j++) {
+		for (int k : {1, -1}) {
+			Eigen::Vector3i offset = {0,0,0};
+			offset[j] = k;
+			if (!check_for_residue(residues, residues[i].coords, offset).has_value()) {
+				updates.emplace_back([this,i,offset](){residues[i].side_chain = residues[i].coords+offset;});
+			}
+		}
+	}
+}
+
+
+// Takes a index in the residue chain, tries a random move that is valid for it
+int Protein::attempt_move(size_t i)
+{
+	std::vector<std::function<void(void)>> updates;
+	find_end_moves(updates, i);
+	find_corner_moves(updates, i);
+	// find_sidechain_moves(updates, i);
+	if (updates.size() == 0) return -1;
+	updates[rand() % updates.size()]();
 	return 0;
 }
 
