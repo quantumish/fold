@@ -67,7 +67,7 @@ static std::optional<size_t> check_for_residue(std::vector<Residue> residues, Ei
 
 // Overloaded `check_for_residue()` that adds a given 3d offset to
 // given coordinates yet otherwise acts the same.
-static std::optional<size_t> check_for_residue(std::vector<Residue> residues, Eigen::Vector3i loc, Eigen::Vector3i offset);
+static std::optional<size_t> check_for_residue(std::vector<Residue> residues, Eigen::Vector3i loc, Eigen::Vector3i offset)
 {
 	loc += offset;
 	for (int i = 0; i < residues.size(); i++) if (residues[i].coords == loc) return i;
@@ -125,6 +125,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 {
 	for (int i = 0; i < sequence.size(); i++) {
 		Eigen::Vector3i loc;
+		// TODO Address the fact that this is a narrowing conversion from size_t -> int
 		if (denatured) loc = {0,residues.size(),0};
 		else if (i==0) loc = {0,0,0};
 		else {			
@@ -189,8 +190,9 @@ void Protein::find_corner_moves(std::vector<std::function<void(void)>>& updates,
 		 {{{0,1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,-1}}}, {{{0,-1,0},{0,0,1}}}, {{{0,1,0},{0,0,1}}}}
 	};
 	for (int j = 0; j < 8; j++) {
-		if (abs(i - check_for_residue(residues, residues[i].coords, corners[j][0])).value_or(NULL) == 1 &&
-			abs(i - check_for_residue(residues, residues[i].coords, corners[j][1])).value_or(NULL) == 1) {			
+		// TODO/HACK: Review and simplify this if statement: it's likely buggy
+		if (abs(static_cast<int>(i) - static_cast<int>(check_for_residue(residues, residues[i].coords, corners[j][0]).value_or(NULL))) == 1 &&
+			abs(static_cast<int>(i) - static_cast<int>(check_for_residue(residues, residues[i].coords, corners[j][1]).value_or(NULL))) == 1) {			
 			Eigen::Vector3i offset = corners[j][0]+corners[j][1];
 			if (!check_for_residue(residues, residues[i].coords, offset).has_value()) {
 				updates.emplace_back([this,i,offset](){residues[i].coords+=offset;});
