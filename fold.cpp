@@ -21,8 +21,9 @@ constexpr double BOLTZ_CONST = 1.380649e-23;
 std::map<char, int> amino_acid_map = {
     {'C', 0},  {'M', 1},  {'F', 2},  {'I', 3},  {'L', 4},  {'V', 5},  {'W', 6},
     {'Y', 7},  {'A', 8},  {'G', 9},  {'T', 10}, {'S', 11}, {'N', 12}, {'Q', 13},
-    {'D', 14}, {'E', 15}, {'E', 16}, {'H', 17}, {'R', 18}, {'K', 19}, {'P', 20}
+    {'D', 14}, {'E', 15}, {'H', 16}, {'R', 17}, {'K', 18}, {'P', 19},
 };
+
 float interactions[20][20] = {
 	{-3.477, -2.240, -2.424, -2.410, -2.343, -2.258, -2.080, -1.892, -1.700, -1.101,  -1.243, -1.306, -0.788, -0.835, -0.616, -0.179, -1.499, -0.771, -0.112, -1.196},
 	{-2.240, -1.901, -2.304, -2.286, -2.208, -2.079, -2.090, -1.834, -1.517, -0.897,  -0.999, -0.893, -0.658, -0.720, -0.409, -0.209, -1.252, -0.611, -0.146, -0.788},
@@ -150,7 +151,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 			}
 			loc = open_offsets[rand() % open_offsets.size()];
 		}
-		residues.push_back({static_cast<int>(amino_acid_map[sequence[i]]), loc});
+		residues.push_back({static_cast<int>(amino_acid_map[sequence[i]]), loc, loc+Eigen::Vector3i(1,0,0)});
 	}
 };
 
@@ -240,7 +241,7 @@ int main()
 	Protein protein ("HPPHPH", 2, true);
 	for (int i = 0; i < 30000; i++) {
 		protein.update();
-		float cost = energy(protein.residues);
+		// float cost = protein.energy;
 	}
 }
 
@@ -249,6 +250,7 @@ PYBIND11_MODULE(fold, m) {
 	m.doc() = "Protein folding.";
 	py::class_<Residue>(m, "Residue")
 		.def_readonly("id", &Residue::id)
+		.def_readonly("sidechain", &Residue::side_chain)
 		.def_readonly("backbone", &Residue::backbone);
 	py::class_<Protein>(m, "Protein")
 		.def(py::init<std::string, float, bool>())
