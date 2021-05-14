@@ -22,9 +22,9 @@ def threedimview(protein: fold.Protein, step: int, temp: float):
         if (x != len(protein.residues)-1):
             backbones.append(i.backbone)
             if (lookup[i.id] in polar):
-                polar_r.append(i.sidechain)
+                polar_r.append(i.backbone+i.sidechain)
             else:
-                nonpolar_r.append(i.sidechain)
+                nonpolar_r.append(i.backbone+i.sidechain)
             chain.append([i.backbone, protein.residues[x+1].backbone])
         cc = Line3DCollection(chain, color='black', linewidths=2, label="Chain connection")
         bc = Line3DCollection(bonds, color='red', linewidths=2, label="Bond")
