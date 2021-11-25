@@ -16,6 +16,6 @@ if (PYTHON)
 endif()
 
 if (CPP)
-    add_executable(jacobian_cli example.cpp ./src/bpnn.cpp ./src/utils.cpp)
+    add_executable(fold ./fold.cpp)
 endif()
   
