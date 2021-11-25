@@ -57,7 +57,7 @@ float sigmoidish(float x, float T) {
 struct Residue {
     int id;
     bool hydrophobic;
-    Eigen::Vector3i backbone;
+    // Eigen::Vector3i backbone;
     Eigen::Vector3i side_chain;
 };
 
@@ -87,7 +87,7 @@ public:
 std::optional<size_t> Protein::check_for_entity(Eigen::Vector3i loc) {
     for (int i = 0; i < residues.size(); i++) {
 	// FIXME Addition of sidechains makes logic very questionable.
-	if (residues[i].backbone == loc || residues[i].backbone+residues[i].side_chain == loc) return i;
+	if (residues[i].side_chain == loc) return i;
     }
     return std::nullopt;
 }
@@ -97,7 +97,7 @@ std::optional<size_t> Protein::check_for_entity(Eigen::Vector3i loc) {
 std::optional<size_t> Protein::check_for_entity(Eigen::Vector3i loc, Eigen::Vector3i offset) {
     loc += offset;
     for (int i = 0; i < residues.size(); i++) {
-	if (residues[i].backbone == loc || residues[i].backbone+residues[i].side_chain == loc) return i;
+	if (residues[i].side_chain == loc) return i;
     }
     return std::nullopt;
 }
@@ -105,7 +105,7 @@ std::optional<size_t> Protein::check_for_entity(Eigen::Vector3i loc, Eigen::Vect
 std::optional<size_t> Protein::check_for_entity(std::vector<Residue> res, Eigen::Vector3i loc, Eigen::Vector3i offset) {
     loc += offset;
     for (int i = 0; i < residues.size(); i++) {
-	if (res[i].backbone == loc || res[i].backbone+residues[i].side_chain == loc) return i;
+	if (res[i].side_chain == loc) return i;
     }
     return std::nullopt;
 }
@@ -113,10 +113,10 @@ std::optional<size_t> Protein::check_for_entity(std::vector<Residue> res, Eigen:
 
 int Protein::exposure(std::vector<Residue> res, size_t i) {
     int n = 0;
-    if (!check_for_entity(res[i].backbone, {-1, 0, 0}).has_value()) n++;
-    if (!check_for_entity(res[i].backbone, {1, 0, 0}).has_value()) n++;
-    if (!check_for_entity(res[i].backbone, {0, -1, 0}).has_value()) n++;
-    if (!check_for_entity(res[i].backbone, {0, 1, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].side_chain, {-1, 0, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].side_chain, {1, 0, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].side_chain, {0, -1, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].side_chain, {0, 1, 0}).has_value()) n++;
     return n;
 }
 
@@ -155,8 +155,8 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 		Eigen::Vector3i offset = {0,0,0};
 		for (int k : {1, -1}) {
 		    offset[j] = k;
-		    if (!check_for_entity(residues[i-1].backbone, offset).has_value()) {
-			open_offsets.push_back(residues[i-1].backbone+offset);
+		    if (!check_for_entity(residues[i-1].side_chain, offset).has_value()) {
+			open_offsets.push_back(residues[i-1].side_chain+offset);
 		    }
 		}
 	    }
@@ -165,7 +165,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 	    }
 	    loc = open_offsets[rand() % open_offsets.size()];
 	}
-	residues.push_back({amino_acid_map.at(sequence[i]), (hydrophobic.find(sequence[i]) < 7), loc, loc+Eigen::Vector3i(1,0,0)});
+	residues.push_back({amino_acid_map.at(sequence[i]), (hydrophobic.find(sequence[i]) < 7), loc});
     }
 };
 
@@ -192,8 +192,8 @@ void Protein::find_end_moves(std::vector<std::function<void(void)>>& updates, si
 	    for (int k : {1, -1}) {
 		Eigen::Vector3i offset = {0,0,0};
 		offset[j] = k;
-		if (!check_for_entity(residues[i+prev].backbone, offset).has_value()) {
-		    updates.emplace_back([this,i,prev,offset](){residues[i].backbone = residues[i+prev].backbone+offset;});
+		if (!check_for_entity(residues[i+prev].side_chain, offset).has_value()) {
+		    updates.emplace_back([this,i,prev,offset](){residues[i].side_chain = residues[i+prev].side_chain+offset;});
 		}
 	    }
 	}
@@ -212,11 +212,11 @@ void Protein::find_corner_moves(std::vector<std::function<void(void)>>& updates,
     };
     for (int j = 0; j < 8; j++) {
 	// TODO/HACK: Review and simplify this if statement: it's likely buggy
-	if (abs(static_cast<int>(i) - static_cast<int>(check_for_entity(residues[i].backbone, corners[j][0]).value_or(NULL))) == 1 &&
-	    abs(static_cast<int>(i) - static_cast<int>(check_for_entity(residues[i].backbone, corners[j][1]).value_or(NULL))) == 1) {
+	if (abs(static_cast<int>(i) - static_cast<int>(check_for_entity(residues[i].side_chain, corners[j][0]).value_or(NULL))) == 1 &&
+	    abs(static_cast<int>(i) - static_cast<int>(check_for_entity(residues[i].side_chain, corners[j][1]).value_or(NULL))) == 1) {
 	    Eigen::Vector3i offset = corners[j][0]+corners[j][1];
-	    if (!check_for_entity(residues[i].backbone, offset).has_value()) {
-		updates.emplace_back([this,i,offset](){residues[i].backbone+=offset;});
+	    if (!check_for_entity(residues[i].side_chain, offset).has_value()) {
+		updates.emplace_back([this,i,offset](){residues[i].side_chain+=offset;});
 		break;
 	    }
 	}
@@ -229,7 +229,7 @@ void Protein::find_sidechain_moves(std::vector<std::function<void(void)>>& updat
 	for (int k : {1, -1}) {
 	    Eigen::Vector3i offset = {0,0,0};
 	    offset[j] = k;
-	    if (!check_for_entity(residues[i].backbone, offset).has_value()) {
+	    if (!check_for_entity(residues[i].side_chain, offset).has_value()) {
 		updates.emplace_back([this,i,offset](){residues[i].side_chain = offset;});
 	    }
 	}
@@ -264,8 +264,7 @@ PYBIND11_MODULE(fold, m) {
     m.doc() = "Protein folding.";
     py::class_<Residue>(m, "Residue")
 	.def_readonly("id", &Residue::id)
-	.def_readonly("sidechain", &Residue::side_chain)
-	.def_readonly("backbone", &Residue::backbone);
+	.def_readonly("sidechain", &Residue::side_chain);	
     py::class_<Protein>(m, "Protein")
 	.def(py::init<std::string, float, bool>())
 	.def("update", &Protein::update)
