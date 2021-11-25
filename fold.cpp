@@ -24,6 +24,7 @@ const std::map<char, int> amino_acid_map = {
     {'Y', 7},  {'A', 8},  {'G', 9},  {'T', 10}, {'S', 11}, {'N', 12}, {'Q', 13},
     {'D', 14}, {'E', 15}, {'H', 16}, {'R', 17}, {'K', 18}, {'P', 19},
 };
+const std::string hydrophobic = "AVLIPFC";
 
 constexpr float interactions[20][20] = {
     {-3.477, -2.240, -2.424, -2.410, -2.343, -2.258, -2.080, -1.892, -1.700, -1.101,  -1.243, -1.306, -0.788, -0.835, -0.616, -0.179, -1.499, -0.771, -0.112, -1.196},
@@ -55,6 +56,7 @@ float sigmoidish(float x, float T) {
 
 struct Residue {
     int id;
+    bool hydrophobic;
     Eigen::Vector3i backbone;
     Eigen::Vector3i side_chain;
 };
@@ -62,7 +64,8 @@ struct Residue {
 class Protein {
     std::optional<size_t> check_for_entity(Eigen::Vector3i loc);
     std::optional<size_t> check_for_entity(Eigen::Vector3i loc, Eigen::Vector3i offset);
-    float energy(std::vector<Residue> residues);
+    std::optional<size_t> check_for_entity(std::vector<Residue> res, Eigen::Vector3i loc, Eigen::Vector3i offset);
+    float energy(std::vector<Residue> res);
     void find_end_moves(std::vector<std::function<void(void)>>& updates, size_t i);
     void find_corner_moves(std::vector<std::function<void(void)>>& updates, size_t i);
     void find_sidechain_moves(std::vector<std::function<void(void)>>& updates, size_t i);
@@ -73,7 +76,7 @@ public:
     Protein(std::string sequence, float temp, bool denatured);
     void update();
     int attempt_move(size_t i);
-    int exposure(size_t i);
+    int exposure(std::vector<Residue> res, size_t i);
 };
 
 /*
@@ -99,30 +102,44 @@ std::optional<size_t> Protein::check_for_entity(Eigen::Vector3i loc, Eigen::Vect
     return std::nullopt;
 }
 
-int Protein::exposure(size_t i)
-{
+std::optional<size_t> Protein::check_for_entity(std::vector<Residue> res, Eigen::Vector3i loc, Eigen::Vector3i offset) {
+    loc += offset;
+    for (int i = 0; i < residues.size(); i++) {
+	if (res[i].backbone == loc || res[i].backbone+residues[i].side_chain == loc) return i;
+    }
+    return std::nullopt;
+}
+
+
+int Protein::exposure(std::vector<Residue> res, size_t i) {
     int n = 0;
-    if (!check_for_entity(residues[i].backbone, {-1, 0, 0}).has_value()) n++;
-    if (!check_for_entity(residues[i].backbone, {1, 0, 0}).has_value()) n++;
-    if (!check_for_entity(residues[i].backbone, {0, -1, 0}).has_value()) n++;
-    if (!check_for_entity(residues[i].backbone, {0, 1, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].backbone, {-1, 0, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].backbone, {1, 0, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].backbone, {0, -1, 0}).has_value()) n++;
+    if (!check_for_entity(res[i].backbone, {0, 1, 0}).has_value()) n++;
     return n;
 }
 
 // Takes residue chain and calculates energy score. O(n^2).
-float Protein::energy(std::vector<Residue> residues)
-{
-    float energy = 0;
-    for (int i = 0; i < residues.size(); i++) {
-	for ( int j = 0; j < residues.size(); j++) {
-	    if (abs(i-j) == 1 || i==j) continue;
-	    if (((residues[i].side_chain+residues[i].backbone)-(residues[j].side_chain+residues[i].backbone)).norm() == 1 &&
-		((residues[i].side_chain == residues[j].side_chain) || (residues[i].side_chain == -residues[j].side_chain))) {
-		energy+=interactions[residues[i].id][residues[j].id];
-	    }
-	}
+float Protein::energy(std::vector<Residue> res) {
+    int energy = 0;
+    for (int i = 0; i < res.size(); i++) {
+        if (res[i].hydrophobic) {
+	    energy += exposure(res, i);
+	}	
     }
-    return energy/2;
+    return energy;
+    // float energy = 0;
+    // for (int i = 0; i < res.size(); i++) {
+    // 	for ( int j = 0; j < res.size(); j++) {
+    // 	    if (abs(i-j) == 1 || i==j) continue;
+    // 	    if (((res[i].side_chain+res[i].backbone)-(res[j].side_chain+res[i].backbone)).norm() == 1 &&
+    // 		((res[i].side_chain == res[j].side_chain) || (res[i].side_chain == -res[j].side_chain))) {
+    // 		energy+=interactions[res[i].id][res[j].id];
+    // 	    }
+    // 	}
+    // }
+    // return energy/2;
 }
 
 Protein::Protein(std::string sequence, float temp, bool denatured)
@@ -130,8 +147,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 {
     for (int i = 0; i < sequence.size(); i++) {
 	Eigen::Vector3i loc;
-	// TODO Address the fact that this is a narrowing conversion from size_t -> int
-	if (denatured) loc = {0,(int)residues.size(),0};
+	if (denatured) loc = {0,static_cast<int>(residues.size()),0};
 	else if (i==0) loc = {0,0,0};
 	else {
 	    std::vector<Eigen::Vector3i> open_offsets;
@@ -149,7 +165,7 @@ Protein::Protein(std::string sequence, float temp, bool denatured)
 	    }
 	    loc = open_offsets[rand() % open_offsets.size()];
 	}
-	residues.push_back({amino_acid_map.at(sequence[i]), loc, loc+Eigen::Vector3i(1,0,0)});
+	residues.push_back({amino_acid_map.at(sequence[i]), (hydrophobic.find(sequence[i]) < 7), loc, loc+Eigen::Vector3i(1,0,0)});
     }
 };
 
@@ -236,8 +252,8 @@ int Protein::attempt_move(size_t i)
 int main()
 {
     srand(time(0));
-    Protein protein ("HPPHPH", 2, true);
-    for (uint64_t i = 0; i < UINT64_MAX; i++) {
+    Protein protein ("HPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPHHPPHPH", 2, true);
+    for (uint64_t i = 0; i < 10000; i++) {
 	protein.update();
 	// float cost = protein.energy;
     }
@@ -254,7 +270,6 @@ PYBIND11_MODULE(fold, m) {
 	.def(py::init<std::string, float, bool>())
 	.def("update", &Protein::update)
 	.def_readonly("residues", &Protein::residues)
-	.def_readonly("score", &Protein::score);
-    m.def("exposure", &exposure, py::arg("residues"), py::arg("i"));
+	.def_readonly("score", &Protein::score);    
 }
 #endif
