@@ -11,7 +11,7 @@ lookup = "CMFILVWYAGTSNQDEHRKP"
 polar = "QNHSTYC"
 
 
-def threedimview(protein: fold.Protein, step: int, temp: float):
+def threedimview(protein: fold.Protein, step: int):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     for _i in range(step):
@@ -54,8 +54,8 @@ def threedimview(protein: fold.Protein, step: int, temp: float):
 
 
 sequence = "NLYIQWLKDGGPSSGRPPPS"
-temp = 1
+temp = 100
 protein = fold.Protein(sequence, temp, True)
-for i in range(10):
+for _i in range(100):
     protein.update()
-    threedimview(protein, 1, temp)
+threedimview(protein, 1)

@@ -51,7 +51,7 @@ constexpr float interactions[20][20] = {
 
 float sigmoidish(float x, float T) {
     if (x<0) return 1;
-    else return 1/(100+exp(x/T));
+    else return 1/x;
 }
 
 struct Residue {
@@ -223,18 +223,18 @@ void Protein::find_corner_moves(std::vector<std::function<void(void)>>& updates,
     }
 }
 
-void Protein::find_sidechain_moves(std::vector<std::function<void(void)>>& updates, size_t i)
-{
-    for (int j = 0; j < 3; j++) {
-	for (int k : {1, -1}) {
-	    Eigen::Vector3i offset = {0,0,0};
-	    offset[j] = k;
-	    if (!check_for_entity(residues[i].side_chain, offset).has_value()) {
-		updates.emplace_back([this,i,offset](){residues[i].side_chain = offset;});
-	    }
-	}
-    }
-}
+// void Protein::find_sidechain_moves(std::vector<std::function<void(void)>>& updates, size_t i)
+// {
+//     for (int j = 0; j < 3; j++) {
+// 	for (int k : {1, -1}) {
+// 	    Eigen::Vector3i offset = {0,0,0};
+// 	    offset[j] = k;
+// 	    if (!check_for_entity(residues[i].side_chain, offset).has_value()) {
+// 		updates.emplace_back([this,i,offset](){residues[i].side_chain += offset;});
+// 	    }
+// 	}
+//     }
+// }
 
 
 // Takes a index in the residue chain, tries a random move that is valid for it
@@ -243,7 +243,7 @@ int Protein::attempt_move(size_t i)
     std::vector<std::function<void(void)>> updates;
     find_end_moves(updates, i);
     find_corner_moves(updates, i);
-    find_sidechain_moves(updates, i);
+    // find_sidechain_moves(updates, i);
     if (updates.size() == 0) return -1;
     updates[rand() % updates.size()]();
     return 0;
