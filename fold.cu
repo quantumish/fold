@@ -3,8 +3,10 @@
 #include <vector>
 #include <algorithm>
 #include <random>
-#include <stdio>
+#include <cstdio>
 #include <Eigen/Dense>
+#include <curand_kernel.h>
+#include <curand.h>
 
 enum class Amino {
     Alanine,
@@ -33,7 +35,7 @@ using Sequence = std::vector<Amino>;
 Sequence make_sequence(const std::string str) {
     std::string raw_in;
     std::transform(str.begin(), str.end(), raw_in.begin(), [](char c) {return std::toupper(c);});
-    Sequence seq;
+    Sequence seq{};
     for (char c : raw_in) {
         switch (c) {
         case 'A': seq.push_back(Amino::Alanine); break;
@@ -58,7 +60,8 @@ Sequence make_sequence(const std::string str) {
         case 'V': seq.push_back(Amino::Valine); break;
         default: throw std::domain_error("Invalid amino acid!");
         }
-    }   
+    }
+    return seq;
 }
 
 class Protein {
@@ -107,22 +110,30 @@ __device__ void step(Protein& protein) {
     // rand() % 
 }
 
-__global__ void __anneal_multistart_singlestrat(Sequence seq) {
-    auto protein = Protein::random(seq);
-    float cost = rand() % 10;
+__global__ void __anneal_multistart_singlestrat(Sequence seq, Protein* proteins, curandState* states) {        
+    curand_init(345678, threadIdx.x, 0, &states[threadIdx.x]);
+    int cost = curand(&states[threadIdx.x]);    
+    printf("%d %d\n", threadIdx.x, cost);
     for (int offset = 32; offset > 0; offset /= 2) {
         auto other = __shfl_down_sync(0xFFFFFFFF, cost, offset);
         cost = cost < other ? cost : other;
     }
-    printf("%f\n", cost);
+    printf("%d %d\n", threadIdx.x, cost);
 }
 
 
-void anneal_multistart_singlestrat(Sequence seq) {
-    __anneal_multistart_singlestrat<<<1,32>>>(seq);
+void anneal_multistart_singlestrat(Sequence seq) {    
+    Protein* proteins;
+    printf("????\n");
+    cudaMallocManaged(&proteins, sizeof(Protein) * 32);
+    curandState *dev_random;
+    cudaMalloc((void**)&dev_random, 32*sizeof(curandState));
+    // for (int i = 0; i < 32; i++) proteins[i] = Protein::random(seq);
+    __anneal_multistart_singlestrat<<<1,32>>>(seq, proteins, dev_random);
+    cudaDeviceSynchronize();
 }
 
 int main() {
-    Sequence seq("HPHPHP");
+    auto seq = make_sequence("HPHPHP");
     anneal_multistart_singlestrat(seq);
 }
