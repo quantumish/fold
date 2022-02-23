@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <stdio>
 #include <Eigen/Dense>
 
 enum class Amino {
@@ -102,11 +103,26 @@ Protein Protein::random(Sequence seq) {
     return {seq, pos};    
 }
 
+__device__ void step(Protein& protein) {
+    // rand() % 
+}
+
 __global__ void __anneal_multistart_singlestrat(Sequence seq) {
-   
+    auto protein = Protein::random(seq);
+    float cost = rand() % 10;
+    for (int offset = 32; offset > 0; offset /= 2) {
+        auto other = __shfl_down_sync(0xFFFFFFFF, cost, offset);
+        cost = cost < other ? cost : other;
+    }
+    printf("%f\n", cost);
 }
 
 
 void anneal_multistart_singlestrat(Sequence seq) {
-    
+    __anneal_multistart_singlestrat<<<1,32>>>(seq);
+}
+
+int main() {
+    Sequence seq("HPHPHP");
+    anneal_multistart_singlestrat(seq);
 }
