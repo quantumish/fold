@@ -1,4 +1,9 @@
 #include <exception>
+#include <stdexcept>
+#include <vector>
+#include <algorithm>
+#include <random>
+#include <Eigen/Dense>
 
 enum class Amino {
     Alanine,
@@ -7,25 +12,26 @@ enum class Amino {
     AsparticAcid,
     Cysteine,
     Glutamine,
-    GluatamicAcid,
+    GlutamicAcid,
     Glycine,
     Histidine,
     Isoleucine,
     Leucine,
     Lysine,
     Methionine,
-    Pheynlalanine,
+    Phenylalanine,
     Proline,
     Serine,
     Threonine,
     Tryptophan,
     Tyrosine,
-    Valine
-}
+    Valine,
+};
 
-using Sequence = std::vector<Amino> value;
+using Sequence = std::vector<Amino>;
 Sequence make_sequence(const std::string str) {
-    auto raw_in = str.toupper();
+    std::string raw_in;
+    std::transform(str.begin(), str.end(), raw_in.begin(), [](char c) {return std::toupper(c);});
     Sequence seq;
     for (char c : raw_in) {
         switch (c) {
@@ -49,17 +55,21 @@ Sequence make_sequence(const std::string str) {
         case 'W': seq.push_back(Amino::Tryptophan); break;
         case 'Y': seq.push_back(Amino::Tyrosine); break;
         case 'V': seq.push_back(Amino::Valine); break;
-        default: throw std::exception("Invalid amino acid!");
+        default: throw std::domain_error("Invalid amino acid!");
         }
     }   
 }
 
 class Protein {
+    Protein(Sequence seq, std::vector<Eigen::Vector3i> pos);
     Sequence sequence;
     std::vector<Eigen::Vector3i> positions;
+public:
     Protein(Sequence seq);
     static Protein random(Sequence seq);
 };
+
+Protein::Protein(Sequence seq, std::vector<Eigen::Vector3i> pos) :sequence{seq}, positions{pos} {}
 
 // Initializes `Protein` in denatured state (a straight line across the Y axis)
 Protein::Protein(Sequence seq) {
@@ -77,8 +87,8 @@ Protein Protein::random(Sequence seq) {
         bool clear = false;
         Eigen::Vector3i candidate;
         while (clear == false) {
-            candidate = pos_back;
-            candidate[rand % 3] += 1;
+            candidate = pos.back();
+            candidate[rand() % 3] += 1;
             // Ensure there are no overlapping candidates.
             clear = true;
             for (Eigen::Vector3i j : pos) {
@@ -89,14 +99,11 @@ Protein Protein::random(Sequence seq) {
         }
         pos.push_back(candidate);
     }
-    return Protein {
-        .sequence = seq;
-        .positions = pos;
-    }
+    return {seq, pos};    
 }
 
-__global__ __anneal_multistart_singlestrat(Sequence seq) {
-    
+__global__ void __anneal_multistart_singlestrat(Sequence seq) {
+   
 }
 
 
