@@ -1,0 +1,10 @@
+build/
+launch.json
+
+.mypy-cache/
+.cmake/
+.ccls-cache/
+
+*~
+\#*\#
+.\#*
