@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <iostream>
+#include <random>
 #include "protein.hpp"
 
 Sequence::Sequence() {
@@ -51,15 +52,18 @@ Protein::Protein(Sequence seq) {
 }
 
 // Initializes 'Protein' in a random configuration. Useful for multistart methods.
-Protein Protein::random(Sequence seq) {    
+Protein Protein::random(Sequence seq) {
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<> distr(0, 2);
     Eigen::Vector3i* pos = new Eigen::Vector3i[seq.size];
     pos[0] = {0,0,0};
     for (int i = 0; i < seq.size-1; i++) {
         bool clear = false;
         Eigen::Vector3i candidate;
         while (clear == false) {
-            candidate = pos[i];
-            candidate[rand() % 3] += 1; // cuRAND ify me
+            candidate = pos[i];			
+            candidate[distr(gen)] += 1;
             // Ensure there are no overlapping candidates.
             clear = true;
             for (int j = 0; j < i; j++) {

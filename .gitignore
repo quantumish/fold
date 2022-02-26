@@ -5,6 +5,9 @@ launch.json
 .cmake/
 .ccls-cache/
 
+fold-bin
+*.so
+
 *~
 \#*\#
 .\#*
