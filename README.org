@@ -1,2 +1,8 @@
 #+TITLE: fold
-#+SUBTITLE: Protein Lattice Models in C++
+
+To build both the binary and the python library, follow the steps below (replace "75" with the compute capability of your GPU if necessary).
+#+begin_src sh
+  mkdir build && cd build
+  cmake -DCMAKE_CUDA_ARCHITECTURES='75' ..
+  make
+#+end_src

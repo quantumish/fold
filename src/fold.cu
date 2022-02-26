@@ -55,10 +55,8 @@ void anneal_multistart_singlestrat(Sequence seq) {
     cudaMallocManaged(&proteins, sizeof(Protein) * 32);	
     curandState *dev_random;
     cudaMalloc((void**)&dev_random, 32*sizeof(curandState));
-	printf("WHEE\n");
-	// std::cout << seq.size << "\n";
     for (int i = 0; i < 32; i++) proteins[i] = Protein::random(seq);
     __anneal_multistart_singlestrat<<<1,32>>>(seq, proteins, dev_random);
-    cudaDeviceSynchronize();
+    cudaDeviceSynchronize();	
 }
 

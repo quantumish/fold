@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <iostream>
 #include "protein.hpp"
 
 Sequence::Sequence() {
@@ -58,7 +59,7 @@ Protein Protein::random(Sequence seq) {
         Eigen::Vector3i candidate;
         while (clear == false) {
             candidate = pos[i];
-            candidate[rand() % 3] += 1; // cuRAND ify me			
+            candidate[rand() % 3] += 1; // cuRAND ify me
             // Ensure there are no overlapping candidates.
             clear = true;
             for (int j = 0; j < i; j++) {
@@ -67,7 +68,7 @@ Protein Protein::random(Sequence seq) {
                 }
             }
         }
-        pos[i] = candidate;	    
+        pos[i+1] = candidate;
     }
     return {seq, pos};    
 }
