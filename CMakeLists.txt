@@ -6,6 +6,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
+include(FetchContent)
+FetchContent_Declare(cpp-channel
+  GIT_REPOSITORY https://github.com/andreiavrammsd/cpp-channel.git
+  GIT_TAG master
+)
+FetchContent_GetProperties(cpp-channel)
+if(NOT cpp-channel_POPULATED)
+  FetchContent_Populate(cpp-channel)
+  add_subdirectory(${cpp-channel_SOURCE_DIR} ${cpp-channel_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
+
 find_package(Eigen3 REQUIRED)
 add_compile_options(-w)
 file(GLOB SOURCES src/protein.cpp src/*.cu)
