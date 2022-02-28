@@ -6,10 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-find_package(Thrust REQUIRED CONFIG)
-thrust_create_target(Thrust)
-link_libraries(Thrust)
-
 find_package(Eigen3 REQUIRED)
 add_compile_options(-w)
 file(GLOB SOURCES src/protein.cpp src/*.cu)

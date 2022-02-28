@@ -8,8 +8,8 @@ namespace py = pybind11;
 
 auto get_residues(Protein p) {
 	std::vector<std::tuple<Amino, Eigen::Vector3i>> out;
-	for (int i = 0; i < p.sequence.size; i++) {
-		out.push_back({p.sequence.contents[i], p.positions[i]});
+	for (int i = 0; i < p.sz; i++) {
+		out.push_back({p.sequence[i], p.positions[i]});
 	}
 	return out;
 }
