@@ -3,6 +3,6 @@
 #include "fold.cuh"
 
 int main() {
-    Sequence seq ("HPHPHP");
+	cpu::Sequence seq ("HPHPHP");
 	anneal_multistart_singlestrat(seq);
 }

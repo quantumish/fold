@@ -3,6 +3,8 @@
 #include <random>
 #include "protein.hpp"
 
+using namespace cpu;
+
 Sequence::Sequence() {
     contents = nullptr;
 	size = 0;
@@ -11,30 +13,29 @@ Sequence::Sequence() {
 Sequence::Sequence(const std::string& str) {
     std::string raw_in = str;
     // std::transform(str.begin(), str.end(), raw_in.begin(), [](char c) {return std::toupper(c);});    
-    contents = new Amino[str.length()];
     size = str.length();
-    for (int i = 0; i < str.length(); i++) {
+    for (size_t i = 0; i < str.length(); i++) {
         switch (str[i]) {
-        case 'A': contents[i] = Amino::Alanine; break;
-        case 'R': contents[i] = Amino::Arganine; break;
-        case 'N': contents[i] = Amino::Asparagine; break;
-        case 'D': contents[i] = Amino::AsparticAcid; break;
-        case 'C': contents[i] = Amino::Cysteine; break;
-        case 'Q': contents[i] = Amino::Glutamine; break;
-        case 'E': contents[i] = Amino::GlutamicAcid; break;
-        case 'G': contents[i] = Amino::Glycine; break;
-        case 'H': contents[i] = Amino::Histidine; break;
-        case 'I': contents[i] = Amino::Isoleucine; break;
-        case 'L': contents[i] = Amino::Leucine; break;
-        case 'K': contents[i] = Amino::Lysine; break;
-        case 'M': contents[i] = Amino::Methionine; break;
-        case 'F': contents[i] = Amino::Phenylalanine; break;
-        case 'P': contents[i] = Amino::Proline; break;
-        case 'S': contents[i] = Amino::Serine; break;
-        case 'T': contents[i] = Amino::Threonine; break;
-        case 'W': contents[i] = Amino::Tryptophan; break;
-        case 'Y': contents[i] = Amino::Tyrosine; break;
-        case 'V': contents[i] = Amino::Valine; break;
+        case 'A': contents.push_back(Amino::Alanine); break;
+        case 'R': contents.push_back(Amino::Arganine); break;
+        case 'N': contents.push_back(Amino::Asparagine); break;
+        case 'D': contents.push_back(Amino::AsparticAcid); break;
+        case 'C': contents.push_back(Amino::Cysteine); break;
+        case 'Q': contents.push_back(Amino::Glutamine); break;
+        case 'E': contents.push_back(Amino::GlutamicAcid); break;
+        case 'G': contents.push_back(Amino::Glycine); break;
+        case 'H': contents.push_back(Amino::Histidine); break;
+        case 'I': contents.push_back(Amino::Isoleucine); break;
+        case 'L': contents.push_back(Amino::Leucine); break;
+		case 'K': contents.push_back(Amino::Lysine); break;
+        case 'M': contents.push_back(Amino::Methionine); break;
+		case 'F': contents.push_back(Amino::Phenylalanine); break;
+        case 'P': contents.push_back(Amino::Proline); break;
+        case 'S': contents.push_back(Amino::Serine); break;
+        case 'T': contents.push_back(Amino::Threonine); break;
+        case 'W': contents.push_back(Amino::Tryptophan); break;
+        case 'Y': contents.push_back(Amino::Tyrosine); break;
+        case 'V': contents.push_back(Amino::Valine); break;
         default: throw std::domain_error("Invalid amino acid!");
         }
     }    
@@ -47,7 +48,7 @@ Protein::Protein(Sequence seq) {
     sequence = seq;
 	positions = new Eigen::Vector3i[seq.size];      
     for (int i = 0; i < seq.size; i++) {
-        positions[i] = {0, i, 0};
+        positions.push_back({0, i, 0};
     }
 }
 
