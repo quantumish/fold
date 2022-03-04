@@ -1,8 +1,20 @@
 #+TITLE: fold
+/Efficient lattice protein folding./ 
 
+[[./fold.gif]]
+
+* About
+Parallelized lattice protein folding for consumer hardware seeking to quickly model proteins at a low level of detail. Utilizes a single strategy multistart simulated annealing method to find energy minimum in protein landscape in parallel.
+
+* Build
 To build both the binary and the python library, follow the steps below (replace "75" with the compute capability of your GPU if necessary).
 #+begin_src sh
   mkdir build && cd build
   cmake -DCMAKE_CUDA_ARCHITECTURES='75' ..
   make
 #+end_src
+
+* Usage
+Run =python vis.py= for a demo of the =fold= library.
+
+
