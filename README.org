@@ -1,7 +1,9 @@
 #+TITLE: fold
 /Efficient lattice protein folding./ 
 
-[[./fold.gif]]
+#+BEGIN_HTML
+<img src="./init.gif" width=300px>
+#+END_HTML
 
 * About
 Parallelized lattice protein folding for consumer hardware seeking to quickly model proteins at a low level of detail. Utilizes a single strategy multistart simulated annealing method to find energy minimum in protein landscape in parallel.
