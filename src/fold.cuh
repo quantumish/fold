@@ -1,4 +1,5 @@
 #pragma once
 #include "protein.hpp"
 
-void anneal_multistart_singlestrat(Sequence seq);
+std::tuple<std::vector<Protein>, int> anneal_multistart_singlestrat(Sequence seq);
+

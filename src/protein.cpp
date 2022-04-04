@@ -53,9 +53,9 @@ Protein::Protein(Sequence seq)
 
 // Initializes 'Protein' in a random configuration. Useful for multistart methods.
 Protein Protein::random(Sequence seq) {
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> distr(0, 2);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distr(0, 2);
     Eigen::Vector3i* pos = new Eigen::Vector3i[seq.sz];
     pos[0] = {0,0,0};
     for (size_t i = 0; i < seq.sz-1; i++) {
